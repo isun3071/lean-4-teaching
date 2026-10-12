@@ -135,4 +135,4 @@ quick audit lines such as:
 
 Change the version in `lean-toolchain`, `autograder/lean-toolchain`, `lakefile.toml`,
 `autograder/lakefile.lean` and `gradescope/setup.sh`, run `lake update`, and rerun the
-examples. Check the Mathlib module names your problem sets import still exist.
+examples. Check that the Mathlib module names your problem sets import still exist.
