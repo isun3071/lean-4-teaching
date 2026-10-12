@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
-# Grades a batch of test submissions against one stencil and checks each score.
+# Grades a batch of test submissions against one problem set and checks each score.
 #
-# Usage: ./run_suite.sh STENCIL SUBMISSION...
+# Usage: ./run_suite.sh PROBLEM_SET SUBMISSION...
 #   ./run_suite.sh ProblemSets/Template.lean examples/*.lean
 #
 # Each submission states the score it should get on its first line, as
 # `-- expect: 20/20`; files without that line are skipped. One line is printed per
 # file, then a summary, and the exit status is nonzero if any score differs. Grading
 # takes about a minute per file. To see why one differed, grade it alone:
-#   lake exe autograder --local SUBMISSION STENCIL
+#   lake exe autograder --local SUBMISSION PROBLEM_SET
 
 set -uo pipefail
 

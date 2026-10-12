@@ -10,12 +10,12 @@
 # cannot find them inside a folder, which is why the paths below are added individually
 # from the repository root rather than by zipping a directory.
 #
-# Usage: make_autograder.sh [output.zip] [stencil]
+# Usage: make_autograder.sh [output.zip] [problem-set]
 #
 #   make_autograder.sh ps1.zip ProblemSets/PS1.lean
 #
-# The stencil defaults to `assignment_path` in gradescope/config.json. Naming one here
-# overrides it for this zip only: the zip carries a config.json naming that stencil, and
+# The problem set defaults to `assignment_path` in gradescope/config.json. Naming one here
+# overrides it for this zip only: the zip carries a config.json naming that problem set, and
 # the one in the repository is left as it was.
 #
 # The archive's name is arbitrary. Gradescope's build does `ADD <upload> /tmp/autograder.zip`,
@@ -43,7 +43,7 @@ esac
 stencil_arg="${2:-}"
 if [[ -n "$stencil_arg" ]]; then
   if [[ ! -f "$stencil_arg" ]]; then
-    echo "ERROR: stencil '$stencil_arg' not found." >&2
+    echo "ERROR: problem set '$stencil_arg' not found." >&2
     exit 1
   fi
   stencil_abs="$(cd "$(dirname "$stencil_arg")" && pwd)/$(basename "$stencil_arg")"
@@ -51,14 +51,14 @@ fi
 
 cd "$root"
 
-# The config.json that goes into the zip: the repository's, or a copy naming the stencil
+# The config.json that goes into the zip: the repository's, or a copy naming the problem set
 # given on the command line.
 config="gradescope/config.json"
 if [[ -n "$stencil_arg" ]]; then
   stencil="${stencil_abs#"$root"/}"
   case "$stencil" in
     ProblemSets/*) ;;
-    *) echo "ERROR: the stencil must be inside ProblemSets/ to travel in the zip; got '$stencil_arg'." >&2
+    *) echo "ERROR: the problem set must be inside ProblemSets/ to travel in the zip; got '$stencil_arg'." >&2
        exit 1 ;;
   esac
   tmp="$(mktemp -d)"
@@ -83,7 +83,7 @@ rm -f "$zip_path"
 {
   echo "build:    $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
   echo "commit:   $(git rev-parse --short HEAD 2>/dev/null || echo '(not a git checkout)')$(git diff --quiet 2>/dev/null || echo ' +uncommitted')"
-  echo "stencil:  $stencil"
+  echo "problem set: $stencil"
 } > gradescope/build_stamp.txt
 
 # Scripts Gradescope invokes, flattened to the archive root.

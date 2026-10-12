@@ -156,11 +156,11 @@ initialize allowedTacticsAttr : ParametricAttribute (Array String) ←
 may cite. A theorem is cited when the proof depends on it *and* the student wrote its
 name, in the exercise or in a lemma of their own the exercise relies on. Theorems a tactic
 uses on its own -- the plumbing behind `rewrite`, whatever `simp` or `norm_num` finds --
-are not citations; control those through `allowedTactics`. Lemmas the stencil itself
+are not citations; control those through `allowedTactics`. Lemmas the problem set itself
 states and proves, and the other exercises, may always be cited.
 
 A name also permits namespaced versions of it: `"add_comm"` permits `Nat.add_comm`. Every
-name must exist when the stencil is compiled, so a misspelling fails the stencil instead
+name must exist when the problem set is compiled, so a misspelling fails the problem set instead
 of every submission. -/
 syntax:50 (name := allowed_theorems) "allowedTheorems" "#[" sepBy(str, ",") "]" : attr
 

@@ -347,7 +347,7 @@ def resolveLocalLandrunFallback : IO (Array (String × Option String)) := do
       IO.println <| "WARNING: `landrun` was not found on PATH and COMPARATOR_LANDRUN is "
         ++ "not set. Falling back to Comparator's scripts/fake-landrun.sh dev shim for "
         ++ "this --local run, which provides NO SANDBOXING. This is fine for locally "
-        ++ "testing your own stencil/submission files, but must never be relied on to "
+        ++ "testing your own problem set and submission files, but must never be relied on to "
         ++ "grade an untrusted submission -- install a real `landrun` (or point "
         ++ "COMPARATOR_LANDRUN at one) for that."
     return #[("COMPARATOR_LANDRUN", some fakeLandrunScript.toString)]
@@ -877,7 +877,7 @@ def auditLine (sheet submission : Environment) (declCmds : Std.HashMap Name Synt
       | _ => match declCmds[h]? with
         | some c => s!"tactics: {list (tacticNamesIn kinds c)}"
         | none => "?"
-    let kind := if (sheet.find? h).isSome then s!"CHANGED from stencil; {kind}" else kind
+    let kind := if (sheet.find? h).isSome then s!"CHANGED from the problem set; {kind}" else kind
     s!"{h} ({kind})"
   let mut line := s!"[audit] {exercise}  tactics: {tactics}"
   line := line ++ s!"  |  theorems cited: {list (cited.map toString)}"
@@ -1463,7 +1463,7 @@ unsafe def main (args : List String) : IO Unit := do
   let (studentFileName, output) ← moveFilesIntoPlace cfg.localSubmission
   phase "submission copied into place"
   moveTemplateIntoPlace cfg.localTemplate
-  phase "stencil copied into place"
+  phase "problem set copied into place"
   -- We need to compile the AutograderTests directory to ensure that any
   -- libraries on which we depend get compiled (even if the sheet itself fails
   -- to compile)
@@ -1489,11 +1489,11 @@ unsafe def main (args : List String) : IO Unit := do
         ++ "link to your submission."
 
   let sheetCmdState : Command.State := Command.mkState sheetHeadEnv sheetMsgs {}
-  phase "elaborating stencil"
+  phase "elaborating problem set"
   let sheetFrontEndState
     ← IO.processCommands sheetCtx sheetParState sheetCmdState
   let sheet := sheetFrontEndState.commandState.env
-  phase "stencil elaborated"
+  phase "problem set elaborated"
 
 
   -- Grade the student submission

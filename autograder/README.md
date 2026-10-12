@@ -1,6 +1,6 @@
 # Grading engine
 
-`Main.lean` is the grader and `AutograderLib.lean` holds the attributes stencils use.
+`Main.lean` is the grader and `AutograderLib.lean` holds the attributes problem sets use.
 The repository's top-level README describes how to use them.
 
 This directory derives from

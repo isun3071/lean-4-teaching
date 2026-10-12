@@ -7,14 +7,14 @@ as it stands. (Open an issue on the repository if something does not work.)
 
 Building and uploading:
 
-    ./gradescope/make_autograder.sh <name of your gradescope zip> <location of your stencil>
+    ./gradescope/make_autograder.sh <name of your gradescope zip> <location of your problem set>
 
 Upload `gradescope/<name of your gradescope zip>` under Configure Autograder.
 Then, under the assignment's settings, set memory to 6 GB and CPU to 4. (Please
 do this to avoid memory limits or timeouts on the autograder!)
 
 Oftentimes, you can just copy your student facing Lean handout file and have that
-serve as a stencil, with some additions specified below.
+serve as the problem set, with some additions specified below.
 -/
 
 -- ## 1. Imports
@@ -29,7 +29,7 @@ import Mathlib.Basic.Real.Basic
 import Mathlib.Tactic.Ring
 import AutograderLib    -- You MUST import this for the autograder to work! Student handouts do not need it
 
--- NOTE: Extraneous imports beyond what the stencil imports will fail the submission and give a 0,
+-- NOTE: Extraneous imports beyond what this file imports will fail the submission and give a 0,
 -- so please make sure students know to not tamper with imports.
 
 -- ## 2. Definitions and provided lemmas
@@ -61,7 +61,7 @@ theorem even_add_even (m n : ℤ) : IsEven m → IsEven n → IsEven (m + n) := 
 -- You do not need to write solutions here. The autograder simply checks if the
 -- student solved the exact goals you specified in each problem however they want
 -- provided they follow the tactic and theorem restrictions you listed. Therefore,
--- this stencil can leave `sorry` placeholders.
+-- this file can leave `sorry` placeholders.
 
 -- (Don't worry, student submissions with `sorry` in them do not award credit)
 --

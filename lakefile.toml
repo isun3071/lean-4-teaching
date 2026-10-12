@@ -5,7 +5,7 @@ defaultTargets = ["CourseLib"]
 # Mathlib, for the real numbers.
 #
 # Problem sets must never `import Mathlib` whole: that alone measured 120 s and 3.8 GB,
-# and the grader loads the stencil and the submission at once, against Gradescope's 6 GB
+# and the grader loads the problem set and the submission at once, against Gradescope's 6 GB
 # ceiling. A problem set needing ℝ imports only `Mathlib.Basic.Real.Basic` (about 3 s and
 # 1.6 GB), plus `CourseLib.Extras`, and never `CourseLib` itself -- see CourseLib.lean for why.
 #

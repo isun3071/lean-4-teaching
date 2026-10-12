@@ -67,20 +67,20 @@ if [[ ! -f lakefile.toml ]]; then
   exit 1
 fi
 
-# Put the assignment stencil where the grader expects it *now*, so everything it needs
+# Put the assignment's problem set where the grader expects it *now*, so everything it needs
 # is compiled here, while the image is being built.
 #
-# The grader copies the stencil into place itself on every run, and then compiles. But
+# The grader copies the problem set into place itself on every run, and then compiles. But
 # at grading time it is inside a container with a memory cap and an assignment timeout,
 # and Lean compilation is the memory-hungry part of the whole pipeline -- so leaving it
 # until then is what makes a submission fail for reasons that have nothing to do with
 # the submission. Doing it here means the grading-time build finds everything current
 # and does nothing.
 #
-# `AutograderTests` builds nothing without this: the stencil is the only module in it,
+# `AutograderTests` builds nothing without this: the problem set is the only module in it,
 # and it is deliberately not shipped at that path in the zip (the grader regenerates it,
 # and a stale copy would be worse than none). Its absence is also why the course library
-# it imports, which the stencil and every submission depend on, would otherwise go
+# it imports, which the problem set and every submission depend on, would otherwise go
 # uncompiled here too.
 ASSIGNMENT_PATH=$(jq -r '.assignment_path' < config.json)
 if [[ ! -f "$ASSIGNMENT_PATH" ]]; then
@@ -92,14 +92,14 @@ fi
 # and nothing else.
 #
 # `lake exe cache get` with no arguments downloads all of Mathlib -- 8,322 modules, about
-# 6 GB -- whatever the stencil uses, and every byte of it is then snapshotted into the
+# 6 GB -- whatever the problem set uses, and every byte of it is then snapshotted into the
 # image, which is what makes uploads slow. Given module names it fetches only those and
 # what they import: 504 modules and 0.38 GB for `Mathlib.Basic.Real.Basic` (as measured on
 # v4.33, where it was `Mathlib.Data.Real.Basic`), 1.13 GB for a
 # problem set importing sixteen topic modules at once, and nothing at all for a problem set
 # that does not import Mathlib.
 #
-# Imports are read from the stencil and from the course prelude, which the stencil may
+# Imports are read from the problem set and from CourseLib, which the problem set may
 # import. A submission can only import what these provide: a Mathlib module outside that
 # set has no prebuilt file here, so the submission's header fails and it scores zero, with
 # the grader's message saying it imported a module that does not exist.
