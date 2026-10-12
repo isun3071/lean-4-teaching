@@ -2,7 +2,7 @@
 
 "Lean 4 Teaching" is a Gradescope autograder for Lean 4 proofs. 
 
-Students fill in their answers in a problem set and upload the file to Gradescope. Each problem is 
+Students fill in their answers in the handout you give them and upload the file to Gradescope. Each problem is 
 awarded points iff the proof is correct and contains only the tactics and theorems you allow.
 
 ### Features
@@ -53,7 +53,8 @@ If you want more information, [docs/GUIDE.md](docs/GUIDE.md) covers imports, tes
   in Lean instead of shortcutting.
 * Submissions are not sandboxed as Gradescope's kernel (4.14) predates the features it needs.
 * Submissions with modified imports will fail and score 0. A student submission must import 
-  exactly what you specify in your template.
+  exactly what you specify in your problem set.
+* This grader is fixed to Lean version 4.34. 
 
 ## License
 

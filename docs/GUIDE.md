@@ -1,7 +1,15 @@
 # Guide
 
-The details behind the README. `ProblemSets/Template.lean` is the place to start; this
-covers what it does not.
+Learn more about this autograder beyond the README and `ProblemSets/Template.lean` here :)
+
+## Glossary
+
+* **Problem set:** the file you write and give the autograder. It is the handout plus
+  `import AutograderLib` and an `@[...]` line above each graded problem.
+* **Handout:** the file you give students: the problem set without those additions, with
+  each proof left as `sorry`.
+* **Submission:** the handout as a student hands it back, with their proofs filled in.
+* **`Template.lean`:** an example problem set to copy when you write your own.
 
 ## Attributes
 
@@ -12,37 +20,33 @@ theorem problem_2 (a b c d : ℝ) : a < b → c < d → a + c < b + d := by
   sorry
 ```
 
-* `autogradedProof` sets the points.
-* `allowedTactics` lists the only tactics allowed, spelled as students type them. `rw` and
-  `rewrite` are different tactics, and bullets are `"cdot"`. Omitted, any tactic is
-  allowed, including `grind` and `simp`, which solve many exercises in one word. Where
-  it is set, a proof must be written with tactics.
-* `allowedTheorems` lists the only library theorems a proof may name, in the proof or in
-  a lemma of the student's own that it uses. Theorems a tactic finds by itself are not
-  named, so keep such tactics off `allowedTactics`. Lemmas the stencil proves, and the
-  other problems, are always allowed. `"add_comm"` also allows `Nat.add_comm`, and a
-  misspelled name stops the stencil compiling.
-* `gradedByHand` marks a problem where students write their own statement. It scores
-  nothing, and graders see the student's version, with whether it compiles and uses
-  `sorry`, at the end of the results. Add a manually graded question for its points.
+* `autogradedProof` declares that this problem will be graded automatically. Specify a number
+  to dictate how many points to award. You must specify a positive number here to avoid
+  errors in your problem set.
+* `allowedTactics` specifies what tactics your students may use. Note that `rw` and
+  `rewrite` are different tactics and bullets are `"cdot"`. Otherwise, spell them exactly
+  as you'd use them. Omitting this allows every tactic, including `grind` and `simp` that can
+  solve many exercises in one line. It is recommended you use this to ensure students learn 
+  how to actually prove theorems in Lean instead of shortcutting.
+* `allowedTheorems` lists the only library theorems a proof may invoke (i.e. theorems that come
+  with Lean or as part of Mathlib). Theorems a tactic finds are not included, but definitions,
+  theorems, and lemmas your problem set provides are allowed across all problems. Note that 
+  misspelling names prevents your problem set from compiling.
+* `gradedByHand` denotes a problem you want to manually grade. Add a manual grading entry
+  to award points for problems you denote with this header. 
 
-Grading compares each student's statement with the stencil's, so the stencil is the
-reference and is safe to hand out.
+Grading simply verifies that the student submission correctly solves the goal specified
+in the problem within your tactic and theorem restrictions. This means that you do not need
+an answer key, and the problem set contains no solutions, so the handout made from it gives nothing away.
 
-Most results taught in discrete mathematics are already theorems in Mathlib, one `exact`
-away. Run `exact?` on each problem before release: if it finds a one-line proof, so will
-students, so restate the problem or keep that theorem off its list.
+*Note: Most results taught in discrete math classes are already theorems in Mathlib and are ∴ one `exact`
+away. It helps to run `exact?` to see if such a theorem exists for your problem; if one exists, 
+consider banning it or rewording your problem.*
 
 ## Imports
 
-The autograder image holds prebuilt files for exactly the Mathlib modules the stencil
-imports. A submission importing anything else fails to load and scores zero, and is
-told which import lines to restore. The handout students receive must import the same
-modules as the stencil. Local testing does not catch a mismatch, because a development
-machine usually has more of Mathlib built than the image.
-
-Never `import Mathlib` whole: grading is killed for memory even at Gradescope's 6 GB
-maximum. Import the modules a problem set needs:
+**Never `import Mathlib` whole.** Grading is killed for memory even at Gradescope's 6 GB
+max. Only import the modules a problem set really needs. For example:
 
 * `Mathlib.Basic.Real.Basic`: ℝ and inequalities, with `nth_rewrite`, `norm_num` and
   `grind`.
@@ -50,95 +54,85 @@ maximum. Import the modules a problem set needs:
   `nth_rewrite`.
 * `Mathlib.Tactic.Ring`: the `ring` tactic.
 
-These are the module names from Mathlib v4.34 on (`Mathlib.Data.Real.Basic` and
-`Mathlib.Logic.Basic` before), which is what this project pins. Lemma names follow
-Mathlib, where `add_lt_add_left h c` proves `a + c < b + c`, adding on the right.
+Student submissions must import exactly what your handout imports. If students modify imports
+in any way, the submission will fail, get a 0, and the student will be prompted to fix the imports
+to match what you specify.
 
-A problem set without Mathlib can `import CourseLib` instead: classical logic laws, `Set`,
-`nth_rewrite`, `factorial`, `choose` and well-ordering, built on core Lean. Never import
-it alongside Mathlib, since it defines some of the same names. `CourseLib.Extras`
-(factorial, choose, well-ordering) is safe with either.
-
-## Handouts for the browser editor
-
-Students can complete a handout at [live.lean-lang.org](https://live.lean-lang.org),
-which runs Mathlib's newest version. The handout must then import only Mathlib modules,
-and lemmas a problem set needs are stated and proved in the handout itself. A handout
-can be opened from a link: `https://live.lean-lang.org/#url=` followed by the raw URL of
-the file.
-
-The editor moves ahead of the version pinned here, so a proof that checks in the browser
-can use a lemma this pin lacks. Check reference solutions both in the editor and with
-the grader.
+`CourseLib` is an optional lightweight library for problem sets that avoid Mathlib; see `CourseLib.lean`
+if you want to use it.
 
 ## Testing a problem set
 
-Grade a solution that keeps to your lists, submission first and stencil second:
+Grade a solution that keeps to your allowlists such as:
 
 ```bash
-lake exe autograder --local my_solution.lean ProblemSets/PS1.lean
+lake exe autograder --local {solution path} {problem set path to grade against}
 ```
 
-Swapped arguments grade the wrong file without warning. A solution that fails here means
-the lists make the problem unsolvable, which nothing else reports.
-
 To test several submissions at once, start each file with its expected score, such as
-`-- expect: 10/20`, and run `./run_suite.sh STENCIL FILES...`. It flags any file that
-scores differently. `examples/` shows the format.
+`-- expect: 10/20`, and run `./run_suite.sh {problem set path} {submission files...}`. 
+It notes any file that scores differently.
 
 ## Uploading
 
-`make_autograder.sh` takes the zip's name and the stencil, which must be inside
-`ProblemSets/`. Both are optional: the name defaults to `autograder.zip`, and the stencil
-to `assignment_path` in `gradescope/config.json`.
-
-Gradescope's memory, CPU and timeout settings are per assignment, under the assignment's
-Settings rather than Configure Autograder. Grading peaks around 3 GB without Mathlib and
-4.4 GB with ℝ, so 6 GB, the maximum, is needed; with less CPU than 4 it is slow enough to
-look broken.
-
-Uploading rebuilds the image; use "Regrade All Submissions" to regrade existing work.
+`make_autograder.sh` takes the zip's name and the problem set, which must be inside
+`ProblemSets/`. The name defaults to `autograder.zip` and the problem set
+to `assignment_path` in `gradescope/config.json`. Then you can upload that zip as is to 
+Gradescope.
 
 ## What graders and students see
 
-Students see each problem's result, in the stencil's order. A failure says what the
-proof used and what is allowed, or shows Lean's error. Hand-graded problems follow as
-0-point entries.
+Students see each problem's result in the problem set's order. Failures come with a message 
+indicating why, such as a Lean error, a disallowed tactic or theorem used, an incomplete proof, or more.
 
-Above the results, in output students never see, graders get one line per problem:
+Hand-graded problems arrive as 0 point entries. In the hidden autograder output, you'll see
+quick audit lines such as:
 
 ```
 [audit] problem_2  tactics: intro, have, exact  |  theorems cited: add_lt_add_left, add_lt_add_right, lt_trans
 [audit] exam_9  tactics: intro, exact  |  theorems cited: none  |  own lemmas: sneaky (tactics: grind)
 ```
 
-It changes no score; it makes shortcuts stand out.
-
-Every results entry is visible to students on purpose. Gradescope withholds a student's
-total score whenever any entry is hidden from them, even one worth no points.
 
 ## Troubleshooting
 
-**Out of memory.** It shows up as exit status 137, or as Lean failing to read its own
-files:
+**"All my submissions failed or grading didn't finish!"**
 
-```
-failed to read file '.../lib/lean/Lean/Message.olean.private'
-```
+1. Did you configure your autograder to use 6 GB of memory and 4 CPUs?  You can find that setting
+    in the assignment's Settings page (NOT the "Configure Autograder" page!). If you see an exit 
+    status of 137 or an error mentioning `olean.private` in the debugging output, it means you ran out of memory.
+2. Did you upload the zip again after your last change? The `commit:` line above the results shows which
+    build graded the submission.
+3. Does your problem set `import Mathlib` whole? Instead, import only the modules
+    you need since it won't fit.
 
-Lean memory-maps these files, so the mapping fails under memory pressure. It looks like
-a corrupt installation, but it means the container is too small. Do not check with
-`free`, which reports the host's memory inside a container. Read the container's limit:
+**"A student somehow got a 0 on this assignment?"**
 
-```bash
-cat /sys/fs/cgroup/memory.max 2>/dev/null || cat /sys/fs/cgroup/memory/memory.limit_in_bytes
-```
+1. Did they change the import lines? Their result tells them the imports they need to put back.
+2. Did they accidentally submit another assignment's file or your unmodified handout with `sorry`s? 
 
-**Grading failed or timed out.** The full log replaces the grader summary above the
-results, with a `[phase]` line per step; the last one shows where it stopped.
+**"A problem is missing from the results!"**
+
+1. Does your problem set compile with nothing but `sorry` warnings? A mistake in a grading
+    attribute, such as `autogradedProof` without a positive number, will cause an error and 
+    prevent the problem from being graded.
+
+**"A solution I know is right doesn't work!"**
+
+1. Does your own solution pass when you grade it locally? If not, you probably disallowed
+    a tactic or theorem your problem needs.
+2. Did the student write `rw` where you allowed `rewrite`, or use bullets without
+   `"cdot"` on the list?
+3. Does it compile in the student's editor but not here? Their editor may run a newer
+   Mathlib than this repository.
+
+**"Grading somehow stopped partway?"**
+
+1. Read the log above the results. The last `[phase]` line denotes the step that was
+   running before it stopped.
 
 ## Upgrading Lean and Mathlib
 
 Change the version in `lean-toolchain`, `autograder/lean-toolchain`, `lakefile.toml`,
 `autograder/lakefile.lean` and `gradescope/setup.sh`, run `lake update`, and rerun the
-examples. Check the Mathlib module names your stencils import still exist.
+examples. Check the Mathlib module names your problem sets import still exist.
