@@ -1,17 +1,20 @@
 # lean-4-teaching
 
-A Gradescope autograder for Lean 4 proofs. Students fill in the `sorry`s in a problem set
-and upload the file; each problem earns its points if the proof is correct and uses only
-the tactics and theorems the instructor allows.
+"Lean 4 Teaching" is a Gradescope autograder for Lean 4 proofs. 
 
-* **Any correct proof counts.** There is no answer key: the problem set's statements are
-  the reference, and [Comparator](https://github.com/leanprover/comparator) re-checks each
-  proof with Lean's kernel.
-* **Tactic and theorem allowlists**, enforced through students' own helper lemmas.
-* **Problems are graded independently.** A broken attempt at one costs only that one.
-* **Hand-graded problems** ("state and prove...") are shown to graders as written.
-* **Built for Gradescope's limits.** Only the Mathlib modules an assignment imports are
-  downloaded, so images build in minutes and grading takes about a minute.
+Students fill in their answers in a problem set and upload the file to Gradescope. Each problem is 
+awarded points iff the proof is correct and contains only the tactics and theorems you allow.
+
+### Features
+* **Accepts all valid submissions:** This grader uses [Comparator](https://github.com/leanprover/comparator) to check proofs with Lean's kernel, which means you don't need to write an answer key.
+In fact, you can reuse the handout you give to students (with some modifications).
+* **Tactic and theorem allowlists:** Limit the tactics and theorems your students may use
+for a problem.
+* **Independent problem grading:** If one problem fails, it does not affect the rest of the submission. 
+* **Hand-graded problem specification:** Problems where the student must declare a theorem
+and other such problems can be graded by hand.
+* **Built for Gradescope's limits:** Only the Mathlib modules an assignment imports are
+  downloaded to avoid Mathlib memory timeouts.
 
 ## Try it
 
@@ -22,35 +25,35 @@ lake update && lake build && lake build autograder
 ./run_suite.sh ProblemSets/Template.lean examples/*.lean
 ```
 
-This grades the sample submissions in `examples/` against the template and checks each
-against its expected score.
+This grades the sample submissions in `examples/` and validates each score
+against what's expected.
 
-## A new problem set
+## Create your own pset:
 
-Copy `ProblemSets/Template.lean`, whose comments explain each part, and write your
-problems. Then:
+Copy `ProblemSets/Template.lean` and write your problems. Comments are in there
+to help you walk through configuration. Then:
 
 ```bash
-./gradescope/make_autograder.sh ps1.zip ProblemSets/PS1.lean
+./gradescope/make_autograder.sh {your zip file name} ProblemSets/{your problem set file name}
 ```
 
-Upload `gradescope/ps1.zip` under Configure Autograder. Under the assignment's
-**Settings**, set memory to 6 GB, CPU to 4, and autograder points to the sum of the
-problems' points. The defaults are too small, and grading fails on them.
+Upload `gradescope/{your zip file name}` under Configure Autograder. Then, under the assignment's settings, set memory to 6 GB and CPU to 4. (Please do this to avoid memory limits or timeouts on the autograder!)
 
-[docs/GUIDE.md](docs/GUIDE.md) covers imports, the browser editor, testing, what
-graders see, and troubleshooting.
+If you want more information, [docs/GUIDE.md](docs/GUIDE.md) covers imports, testing, graders' views, troubleshooting, and more.
 
 ## Limits
 
-* Each problem scores all or nothing. For partial credit, split a problem into
+* Each problem is all or nothing. For partial credit, split a problem into
   separately graded theorems.
 * A theorem reached through dot notation, such as `h.symm`, is not checked against the
   theorem list.
-* Theorems that `simp`, `grind`, `exact?` or `norm_num` find by themselves are
-  controlled only by keeping those tactics off the tactic list.
-* Submissions are not sandboxed: Gradescope's kernel (4.14) predates the features
-  sandboxing tools need.
+* Theorems that `simp`, `grind`, `exact?` or `norm_num` find are
+  controlled only by keeping those tactics off the tactic list. It is recommended that you
+  disallow `simp`, `grind`, `exact?` to ensure students learn how to actually prove theorems
+  in Lean instead of shortcutting.
+* Submissions are not sandboxed as Gradescope's kernel (4.14) predates the features it needs.
+* Submissions with modified imports will fail and score 0. A student submission must import 
+  exactly what you specify in your template.
 
 ## License
 
