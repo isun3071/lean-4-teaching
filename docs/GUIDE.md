@@ -4,11 +4,11 @@ Learn more about this autograder beyond the README and `ProblemSets/Template.lea
 
 ## Glossary
 
-* **Problem set:** the file you write and give the autograder. It is the handout plus
+* **Problem set:** the file you write and give the autograder. It is the handout with
   `import AutograderLib` and an `@[...]` line above each graded problem.
-* **Handout:** the file you give students: the problem set without those additions, with
-  each proof left as `sorry`.
-* **Submission:** the handout as a student hands it back, with their proofs filled in.
+* **Handout:** the file you give students, i.e. the problem set without those additions above and
+problems left with `sorry` placeholders.
+* **Submission:** the handout as a student hands it back with their answers filled in.
 * **`Template.lean`:** an example problem set to copy when you write your own.
 
 ## Attributes
@@ -36,8 +36,8 @@ theorem problem_2 (a b c d : ℝ) : a < b → c < d → a + c < b + d := by
   to award points for problems you denote with this header. 
 
 Grading simply verifies that the student submission correctly solves the goal specified
-in the problem within your tactic and theorem restrictions. This means that you do not need
-an answer key, and the problem set contains no solutions, so the handout made from it gives nothing away.
+in the problem within your tactic and theorem restrictions. This means that you do not need to write
+an answer key in your problem set here.
 
 *Note: Most results taught in discrete math classes are already theorems in Mathlib and are ∴ one `exact`
 away. It helps to run `exact?` to see if such a theorem exists for your problem; if one exists, 
@@ -109,7 +109,7 @@ quick audit lines such as:
 **"A student somehow got a 0 on this assignment?"**
 
 1. Did they change the import lines? Their result tells them the imports they need to put back.
-2. Did they accidentally submit another assignment's file or your unmodified handout with `sorry`s? 
+2. Did they accidentally submit another assignment file or your unmodified handout with `sorry`s? 
 
 **"A problem is missing from the results!"**
 
