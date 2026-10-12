@@ -40,7 +40,7 @@ Upload `gradescope/{your zip file name}` under Configure Autograder. Then, under
 
 If you want more information, [docs/GUIDE.md](docs/GUIDE.md) covers imports, testing, graders' views, troubleshooting, and more.
 
-## Limits
+## Limitations
 
 * Each problem is all or nothing. For partial credit, split a problem into
   separately graded theorems.
@@ -54,6 +54,10 @@ If you want more information, [docs/GUIDE.md](docs/GUIDE.md) covers imports, tes
 * Submissions with modified imports will fail and score 0. A student submission must import 
   exactly what you specify in your problem set.
 * This grader is fixed to Lean version 4.34. 
+
+## Issues
+
+If you encounter any issues with this grader you can always submit a GitHub issue.
 
 ## License
 
