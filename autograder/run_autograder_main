@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+
+# At submission time this script is copied next to the course project and run there.
+
+set -ex
+
+# NOTE: upstream runs `lake exe cache get` here, before grading. That made sense when
+# the course project was cloned fresh inside the container on every submission, so its
+# Mathlib cache had to be fetched before anything could build.
+#
+# Nothing is cloned now: the project ships in the autograder zip and setup.sh already
+# fetched the cache and built everything while the image was being built. Re-checking it
+# per submission cannot find anything new -- it reports "No files to download" every
+# time -- but it still walks the whole cache and contacts the cache server to do so,
+# which measured ~11s locally and is slower on a Gradescope container. That is time
+# taken from the assignment's timeout budget on every single submission, for nothing.
+
+~/.elan/bin/lake exe autograder

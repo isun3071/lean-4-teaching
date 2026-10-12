@@ -1,0 +1,195 @@
+#!/usr/bin/env bash
+
+set -e
+
+cd /autograder/source
+
+# Gradescope shows this script's output to staff above the results, on every submission,
+# so a grader scrolls past it to reach them. Everything goes to a log instead, and the
+# log is shown only when grading went wrong: a nonzero exit, or no results at all. What
+# graders do want there is the proof summary, one audit line per exercise, which the
+# grader writes to its own file; a clean run prints just that. (It cannot be a results
+# entry hidden from students instead: Gradescope withholds a student's total score
+# whenever any entry is hidden from them.)
+GRADER_LOG=/tmp/grader_output.log
+PROOF_SUMMARY=/tmp/proof_summary.txt
+: > "$GRADER_LOG"
+rm -f "$PROOF_SUMMARY"
+
+# The course project ships inside the zip and was extracted here by Gradescope, so
+# there is nothing to pull and no credential to manage. The upstream shell pulled a
+# course repo on every submission and kept a deploy key on disk to do it, which then
+# had to be destroyed before the untrusted submission was elaborated -- elaboration
+# runs arbitrary code from the submission (`initialize`/`#eval`/`run_cmd` blocks run
+# during it), so anything readable at that point is readable by a malicious one. No
+# key ever enters this container now, so there is nothing to shred.
+#
+# `lake update` is likewise gone. It existed to re-resolve dependencies after pulling a
+# possibly-changed course repo; nothing changes between submissions now, and setup.sh
+# already populated .lake/packages when it built the image. Skipping it also means this
+# script needs no network at all, which is the behaviour the sandbox below wants anyway.
+
+{
+  echo "=============== AUTOGRADER BUILD STAMP ==============="
+  cat build_stamp.txt 2>/dev/null || echo "(no build_stamp.txt -- image predates stamping)"
+  echo "====================================================="
+} >> "$GRADER_LOG"
+
+cp autograder/run_autograder_main .
+
+# From here on, nothing legitimate needs network access: all Lake dependencies were
+# fetched by setup.sh when the image was built, so `lake build`/Comparator's own
+# sandboxed builds operate purely from what's already on disk. This is defense-in-depth against
+# a submission's `initialize`/`run_cmd` block exfiltrating anything it can read (e.g.
+# the still-checked-out course repo) -- it doesn't depend on any individual landrun
+# invocation getting its sandboxing flags right, since it's enforced one level up, for
+# the whole process tree. `--user` (creating a fresh user namespace first) is used
+# instead of a bare `--net` so this works whether this script ends up running as root
+# or not; verified locally that plain file I/O still works from inside it.
+#
+# On Gradescope's own grading containers this fails outright: `unshare --user`
+# needs CAP_SYS_ADMIN, which those containers don't grant (confirmed via
+# `unshare: unshare failed: Operation not permitted` on every submission). No flag
+# combination fixes that -- it's a missing capability, not a misconfiguration. Rather
+# than aborting every submission (the previous behavior: `set -ex` + a hard failure
+# here meant nobody got graded), fall back to running ungated, but log a loud,
+# visible diagnostic every time so this is easy to notice and revisit. Properly
+# closing this gap needed landrun's own sandboxing to be trustworthy here. It is not.
+#
+# CONFIRMED on Gradescope, 2026-09-21: the containers run kernel 4.14. Landlock -- the
+# kernel feature landrun is built on -- first shipped in Linux 5.13, and its network
+# rules only in 6.7. On 4.14 there is no Landlock at all, so `landrun --best-effort`
+# degrades to running the command with no restrictions whatsoever and reports success.
+# The diagnostic below confirmed it directly: an outbound connection from inside
+# landrun returned HTTP 200.
+#
+# So neither sandbox is real here. `unshare` is refused for want of CAP_SYS_ADMIN, and
+# landrun is inert for want of a modern kernel -- including the sandbox Comparator uses
+# for its own rebuild of the submission. The only boundary actually containing a
+# malicious submission is Gradescope's own per-submission container. Treat it as the
+# sole one, and keep nothing in this container that must not leak.
+run_grader() {
+  if unshare --user --net -- true 2>/tmp/unshare_probe_err; then
+    unshare --user --net -- ./run_autograder_main
+  else
+    {
+      echo "=== unshare --user --net unavailable, running WITHOUT the outer network sandbox ==="
+      echo "unshare error: $(cat /tmp/unshare_probe_err)"
+      echo "kernel: $(uname -r)"
+      # Report whether landrun could enforce anything, from the kernel version alone.
+      # This used to make a real outbound request through landrun to find out, which
+      # answered the question the first time and then cost every later submission a
+      # network round-trip and up to 5s of the timeout budget to re-answer it
+      # identically. Landlock's availability is a property of the kernel, so reading
+      # the version is equivalent and free -- and still speaks up if Gradescope ever
+      # moves to a kernel new enough to change the answer.
+      kmajor=$(uname -r | cut -d. -f1)
+      kminor=$(uname -r | cut -d. -f2)
+      if (( kmajor > 6 || (kmajor == 6 && kminor >= 7) )); then
+        echo "landrun: kernel supports Landlock network rules (6.7+) -- REVISIT, the sandbox may now be real"
+      elif (( kmajor > 5 || (kmajor == 5 && kminor >= 13) )); then
+        echo "landrun: kernel has Landlock (5.13+) but not its network rules (needs 6.7+) -- filesystem limits only"
+      else
+        echo "landrun: kernel predates Landlock (needs 5.13+) -- landrun enforces NOTHING here"
+      fi
+      echo "=== end diagnostic ==="
+    } >&2
+    rm -f /tmp/unshare_probe_err
+    ./run_autograder_main
+  fi
+}
+
+# Always leave a results.json behind, whatever happens.
+#
+# The grader writes one itself on every path it anticipates, including its own error
+# paths. But if it dies in a way it cannot report -- killed for exceeding the
+# container's memory, killed at the assignment timeout, or crashing before it gets far
+# enough to write anything -- nothing is written, and Gradescope reports only
+# "We did not receive any results for this submission". That message is identical for
+# every such cause, so the actual reason is invisible to whoever has to fix it.
+#
+# Capture the run, and if no results file materialised, synthesise one carrying the
+# output and the exit status. A failing submission then still shows *why*.
+RESULTS_DIR=/autograder/results
+RESULTS_JSON="$RESULTS_DIR/results.json"
+mkdir -p "$RESULTS_DIR"
+
+# Hard ceiling on the whole run, and stdin closed.
+#
+# A submission that hangs produces nothing at all: Gradescope shows "The autograder
+# hasn't finished running yet" indefinitely, the grader's own output is still buffered
+# inside a live process, and there is no verdict for any exercise -- so the one thing
+# needed to find the cause is the one thing a hang withholds. Killing it converts that
+# into a report naming the phase it reached.
+#
+# Deliberately below a typical assignment timeout, so this fires first and leaves a
+# results.json behind; if Gradescope's own timeout wins, the container dies and nothing
+# is written. `</dev/null` closes the other way a step can wait forever -- anything that
+# decides to prompt gets EOF instead of blocking on a terminal that is not there.
+# 9 minutes: comfortably under Gradescope's usual 10-minute assignment timeout, so this
+# fires first and leaves a report, and enormously above a healthy run (~16s for a
+# two-exercise set). Raise it here if an assignment's timeout is raised too.
+GRADER_TIMEOUT_SECS=${GRADER_TIMEOUT_SECS:-540}
+
+# `timeout` runs a command, not a shell function, so export it for the subshell.
+export -f run_grader
+
+set +e
+timeout --signal=TERM --kill-after=30 "$GRADER_TIMEOUT_SECS" \
+  bash -c run_grader </dev/null >> "$GRADER_LOG" 2>&1
+grader_status=$?
+set -e
+
+# A clean run stays silent. The grader also exits nonzero after writing results on the
+# paths it anticipates -- a submission that does not load, say -- and staff want the log
+# for those.
+if [[ $grader_status -ne 0 ]]; then
+  cat "$GRADER_LOG"
+else
+  cat "$PROOF_SUMMARY" 2>/dev/null || true
+fi
+
+if [[ -s "$RESULTS_JSON" ]]; then
+  exit 0
+fi
+
+echo "=== no results.json produced (exit status $grader_status); synthesising one ===" >&2
+
+STATUS="$grader_status" LOG="$GRADER_LOG" OUT="$RESULTS_JSON" python3 <<'PYEOF'
+import json, os
+
+status = os.environ["STATUS"]
+try:
+    with open(os.environ["LOG"], errors="replace") as f:
+        log = f.read()
+except OSError:
+    log = "(no output captured)"
+
+# Keep well inside what Gradescope will render; the tail holds the failure.
+if len(log) > 40000:
+    log = "...(truncated)...\n" + log[-40000:]
+
+# 124 is `timeout` reporting that it killed the command; 137 is SIGKILL, usually the
+# kernel's OOM killer (or `timeout --kill-after` escalating).
+if status == "124":
+    why = ("The autograder hit its time limit and was stopped. The phase markers in the "
+           "output below show how far it got: the last '[phase]' line names the step "
+           "that was still running.")
+elif status == "137":
+    why = ("The autograder was killed. That is usually the kernel's out-of-memory "
+           "killer, though it is also how a timed-out run ends if it ignores being "
+           "asked to stop. Check the container's memory limit and the output below.")
+else:
+    why = ("The autograder exited with status " + status + " without reporting results.")
+
+json.dump({
+    "score": 0.0,
+    "output": ("The autograder failed to produce results, so this submission could not "
+               "be graded. This is a problem with the autograder, not with your "
+               "submission -- please notify your instructor.\n\n" + why +
+               "\n\n--- autograder output ---\n" + log),
+    "output_format": "text",
+}, open(os.environ["OUT"], "w"))
+PYEOF
+
+exit "$grader_status"

@@ -1,0 +1,5 @@
+{
+    "private_repo": "USER/REPO_NAME",
+    "public_repo": "hrmacbeth/autograder_test_instructor",
+    "assignment_path": "ProblemSets/ProblemSet1.lean"
+}

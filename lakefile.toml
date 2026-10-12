@@ -1,0 +1,30 @@
+name = "lean4teaching"
+version = "0.1.0"
+defaultTargets = ["CourseLib"]
+
+# Mathlib, for the real numbers.
+#
+# Problem sets must never `import Mathlib` whole: that alone measured 120 s and 3.8 GB,
+# and the grader loads the stencil and the submission at once, against Gradescope's 6 GB
+# ceiling. A problem set needing ℝ imports only `Mathlib.Basic.Real.Basic` (about 3 s and
+# 1.6 GB), plus `CourseLib.Extras`, and never `CourseLib` itself -- see CourseLib.lean for why.
+#
+# Most problem sets import neither and use `CourseLib`. The dependency is here for the ones
+# that need ℝ, and costs image size and build time on every upload; `rev` must match
+# lean-toolchain.
+[[require]]
+name = "mathlib"
+scope = "leanprover-community"
+rev = "v4.34.0"
+
+# The Gradescope autograder. Vendored into this repository rather than required over
+# the network: it is ours to change freely for the course's needs, with no upstream to
+# track or contribute back to, and grading no longer depends on a second repository
+# staying reachable and correctly pinned. Its own history is upstream at
+# github.com/robertylewis/lean4-autograder-main if a fix ever needs to be compared.
+[[require]]
+name = "autograder"
+path = "autograder"
+
+[[lean_lib]]
+name = "CourseLib"
