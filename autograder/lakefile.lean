@@ -1,7 +1,13 @@
 import Lake
 open Lake DSL
 
-package autograder
+-- Build output goes under the root project's .lake, not autograder/.lake. Comparator
+-- builds each submission inside a landrun sandbox that may write only to the root .lake,
+-- and the scratch libraries below are built there; in autograder/.lake they would be
+-- refused, failing every submission. Gradescope's kernel is too old for that sandbox to
+-- confine anything, which hid this; any kernel from 5.13 on enforces it.
+package autograder where
+  buildDir := "../.lake/autograder"
 
 require comparator from git "https://github.com/leanprover/comparator" @ "v4.34.0"
 
