@@ -744,6 +744,21 @@ def declRoot? (declCmds : Std.HashMap Name Syntax) : Name → Option Name
   | n@(.str p _) => if declCmds.contains n then some n else declRoot? declCmds p
   | n@(.num p _) => if declCmds.contains n then some n else declRoot? declCmds p
 
+/-- Whether some proper prefix of `n` names an imported declaration. -/
+def hasImportedPrefix (env : Environment) : Name → Bool
+  | .str p _ | .num p _ => (env.getModuleIdxFor? p).isSome || hasImportedPrefix env p
+  | .anonymous => false
+
+/-- Whether `n` is a lemma Lean generated, inside the submission, for an imported
+declaration: `choose.eq_3`, say, which Lean creates the first time a proof unfolds the
+imported `choose`. Such a lemma is part of the library's definition, not the student's
+work, yet it is not imported and matches no declaration in the file. Two conditions
+together keep this from excusing anything a student wrote: the name must be one Lean
+reserves for lemmas it generates, which a student cannot declare, and it must extend
+the name of an imported declaration. -/
+def generatedForImport (env : Environment) (n : Name) : Bool :=
+  isReservedName env n && hasImportedPrefix env n
+
 /-- The student's own top-level declarations that the proof of `exercise` depends on, with
 their syntax. `.error d` means the proof depends on a constant defined in the submission that
 could not be traced to any declaration in its source -- one produced by a `namespace`,
@@ -764,7 +779,9 @@ def helperDeps (sheet submission : Environment) (declCmds : Std.HashMap Name Syn
       -- Imported from the course prelude or from core: not the student's to check.
       if (submission.getModuleIdxFor? d).isSome then continue
       match declRoot? declCmds d with
-      | none => return .error d
+      | none =>
+        if generatedForImport submission d then continue
+        return .error d
       | some r =>
         -- Declared by the stencil too: another exercise, or a definition the stencil
         -- supplies. Checked elsewhere, so stop here.
