@@ -679,6 +679,46 @@ partial def containsMissing (stx : Syntax) : Bool :=
   | .node _ _ args => args.any containsMissing
   | _             => false
 
+/-- The name of a command that extends Lean's own syntax or elaboration -- `notation`,
+`macro`, `macro_rules`, `syntax`, `elab`, `infixl` and the like -- if `stx` is or contains
+one.
+
+Such a command breaks the link between what a student wrote and what Lean runs, which is
+what both allowlists read. `containsMissing` above catches a *new* tactic name, because
+the submission is parsed with the sheet's syntax and an unknown name leaves a hole. These
+leave no hole at all:
+
+* `local notation "CHEAT" => @add_lt_add` parses as an ordinary identifier, so the proof
+  term cites `add_lt_add` while the source says only `CHEAT`;
+* `macro_rules | `(tactic| rw [$_]) => `(tactic| simp [or_assoc])` re-points syntax that
+  already exists, so the source says the permitted `rw` while `simp` does the work.
+
+Neither is inspected by the guards above either way: they are commands of their own, and
+those guards only ever see the exercise's declaration and the helpers it depends on. The
+kind's last component is matched by prefix so that variants (`notation3`, `syntaxAbbrev`,
+`syntaxCat`) are covered too. -/
+partial def syntaxExtension? (stx : Syntax) : Option String :=
+  let extension? : Option String :=
+    match stx.getKind with
+    | .str _ last =>
+      if ["notation", "macro", "syntax", "elab", "mixfix", "infix", "prefix", "postfix"].any
+          (fun p => last.startsWith p) then some last else none
+    | _ => none
+  extension? <|> stx.getArgs.findSome? syntaxExtension?
+
+/-- Every syntax-extension command in `cmds`, as its kind and its source text with runs
+of whitespace collapsed. A problem set may legitimately define notation of its own, and a
+submission is a copy of the handout, so the text is what says whether an extension is the
+instructor's or the student's. -/
+def syntaxExtensions (contents : String) (cmds : Array Syntax) : Array (String × String) :=
+  cmds.filterMap fun c => do
+    let kind ← syntaxExtension? c
+    let b ← c.getPos?
+    let e ← c.getTailPos?
+    let text := String.Pos.Raw.extract contents b e
+    let words := (text.splitOn " ").flatMap (·.splitOn "\n") |>.flatMap (·.splitOn "\t")
+    return (kind, String.intercalate " " (words.filter (!·.isEmpty)))
+
 /-- Whether `stx` contains a `by` block, i.e. is proved with tactics at all.
 
 An exercise carrying `@[allowedTactics]` is asking the student to practice tactics, so a
@@ -1158,6 +1198,23 @@ def gradeSubmission (sheet submission : Environment)
   for cmd in submissionCmds do
     if let some n := declNameOf? cmd then
       declCmds := declCmds.insert n cmd
+  -- A syntax extension anywhere in the file defeats both allowlists for every exercise,
+  -- so it is found once and refused for each restricted exercise: see `syntaxExtension?`.
+  -- One the problem set itself declares is the instructor's, and is left alone.
+  let sheetCmds ← parseCommandsOnly sheet sheetContents sheetFileName
+  let sheetExtensions := (syntaxExtensions sheetContents sheetCmds).map (·.2)
+  let extension? :=
+    ((syntaxExtensions submissionContents submissionCmds).find?
+      (fun e => !sheetExtensions.contains e.2)).map (·.1)
+  let extensionVerdict (name : Name) : Option String :=
+    if (allowedTacticsAttr.getParam? sheet name).isNone
+        && (allowedTheoremsAttr.getParam? sheet name).isNone then none
+    else extension?.map fun cmd =>
+      s!"Your file uses `{cmd}` to define new notation or change what a tactic means.\n"
+        ++ "That hides which tactics and theorems your proof really uses, so this "
+        ++ "exercise cannot be checked against its permitted lists.\n"
+        ++ "Prove it with the tactics and theorems the assignment gives you, without "
+        ++ "defining syntax of your own."
   -- See `cleanSubmission`: errors in one problem no longer sink the others.
   let cleaned := cleanSubmission submission submissionContents submissionCmds errors
   writeComparatorSolution cleaned.contents
@@ -1232,7 +1289,7 @@ def gradeSubmission (sheet submission : Environment)
                           let hbad := disallowedTactics kinds allowed hcmd
                           if hbad.isEmpty then none
                           else some (helperViolationMessage h hbad allowed)
-          let verdict := brokenVerdict name <|> tacticVerdict
+          let verdict := extensionVerdict name <|> brokenVerdict name <|> tacticVerdict
             <|> theoremVerdict sheet submission declCmds name
           match verdict with
           | none => proofExercises := proofExercises.push (name, pts)
@@ -1292,7 +1349,7 @@ def gradeSubmission (sheet submission : Environment)
   -- Report exercises in the order the stencil states them. Grading order follows the
   -- environment's internal hash order, which puts, say, problem_3b before problem_2b.
   let order : Std.HashMap Name Nat :=
-    (← parseCommandsOnly sheet sheetContents sheetFileName).foldl (init := ∅) fun m cmd =>
+    sheetCmds.foldl (init := ∅) fun m cmd =>
       match declNameOf? cmd with
       | some n => if m.contains n then m else m.insert n m.size
       | none => m

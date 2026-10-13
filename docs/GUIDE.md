@@ -32,6 +32,10 @@ theorem problem_2 (a b c d : ℝ) : a < b → c < d → a + c < b + d := by
   with Lean or as part of Mathlib). Theorems a tactic finds are not included, but definitions,
   theorems, and lemmas your problem set provides are allowed across all problems. Note that 
   misspelling names prevents your problem set from compiling.
+* On any problem with `allowedTactics` or `allowedTheorems`, a submission that defines its
+  own `notation`, `macro`, `macro_rules`, `syntax` or `elab` is refused: those let a proof
+  show a permitted name while something else does the work. Notation your problem set
+  declares is yours and stays fine, as long as the student leaves it unchanged.
 * `gradedByHand` denotes a problem you want to manually grade. Add a manual grading entry
   to award points for problems you denote with this header. 
 
@@ -123,7 +127,9 @@ quick audit lines such as:
     a tactic or theorem your problem needs.
 2. Did the student write `rw` where you allowed `rewrite`, or use bullets without
    `"cdot"` on the list?
-3. Does it compile in the student's editor but not here? Their editor may run a newer
+3. Did the submission define its own notation or macro? That is refused on any problem
+   with an allowlist.
+4. Does it compile in the student's editor but not here? Their editor may run a newer
    Mathlib than this repository.
 
 **"Grading somehow stopped partway?"**

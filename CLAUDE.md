@@ -50,6 +50,14 @@ Pinned to Lean and Mathlib **v4.34.0**, with Comparator at its v4.34.0 tag.
   - Fails closed on `containsMissing`: parse holes, which is what student-defined
     syntax leaves.
   - Requires a `by` block.
+- **Syntax extensions:** `syntaxExtension?`/`syntaxExtensions` refuse a restricted
+  exercise when the submission declares `notation`, `macro`, `macro_rules`, `syntax`,
+  `elab` or a mixfix, unless the problem set declares the same command (compared by
+  source text, whitespace normalised). Both checks read what the student wrote, so an
+  extension severs that from what Lean runs: `notation "CHEAT" => @add_lt_add` parses as
+  a plain identifier, and `macro_rules` can re-point a permitted tactic at a banned one.
+  `containsMissing` does not catch either, since both parse cleanly and live in commands
+  of their own.
 - **Helper lemmas:** `helperDeps` walks `getUsedConstants`.
   - Submission constants are mapped to their declaration by `declRoot?`.
   - Unchanged problem set declarations (`matchesStencil`) and other exercises are skipped.
