@@ -34,8 +34,12 @@ theorem problem_2 (a b c d : ℝ) : a < b → c < d → a + c < b + d := by
   misspelling names prevents your problem set from compiling.
 * On any problem with `allowedTactics` or `allowedTheorems`, a submission that defines its
   own `notation`, `macro`, `macro_rules`, `syntax` or `elab` is refused: those let a proof
-  show a permitted name while something else does the work. Notation your problem set
-  declares is yours and stays fine, as long as the student leaves it unchanged.
+  show a permitted name while something else does the work. The refusal covers every
+  restricted problem in the file, since a macro can re-point any tactic and nothing in the
+  source says which proofs it touched, so tell students not to write their own macros.
+  Notation your problem set declares is yours and stays fine, as long as the student leaves
+  it unchanged, and a problem with no allowlists is unaffected -- so if you want students
+  writing macros, leave the allowlists off that problem.
 * `gradedByHand` denotes a problem you want to manually grade. Add a manual grading entry
   to award points for problems you denote with this header. 
 

@@ -53,6 +53,11 @@ If you want more information, [docs/GUIDE.md](docs/GUIDE.md) covers imports, tes
 * Submissions are not sandboxed as Gradescope's kernel (4.14) predates the features it needs.
 * Submissions with modified imports will fail and score 0. A student submission must import 
   exactly what you specify in your problem set.
+* A submission that defines its own `notation`, `macro`, `macro_rules`, `syntax` or `elab`
+  scores 0 on every problem with an allowlist, not just the problem that uses it: a macro
+  can silently re-point any tactic and the source does not show which proofs it touched.
+  Tell students not to write their own macros. If you want to teach macro writing, leave
+  the allowlists off that problem.
 * This grader is fixed to Lean version 4.34. 
 
 ## Issues
