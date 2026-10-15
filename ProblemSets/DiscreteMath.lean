@@ -90,6 +90,13 @@ theorem no_odd_combination : ¬ ∃ m n : ℤ, 2 * m + 4 * n = 7 := by
 theorem prime_dvd_square (p a : ℕ) (hp : p.Prime) : p ∣ a * a → p ∣ a := by
   sorry
 
+-- Reduce to the five residues, then let `decide` check them all.
+@[autogradedProof 5,
+  allowedTactics #["rewrite", "have", "exact", "decide", "norm_num"],
+  allowedTheorems #["Nat.pow_mod", "Nat.mod_lt"]]
+theorem sq_mod_five_ne_two (n : ℕ) : n ^ 2 % 5 ≠ 2 := by
+  sorry
+
 -- ## Induction
 
 @[autogradedProof 5,
@@ -103,6 +110,13 @@ theorem powSum_succ (n : ℕ) : powSum n + 1 = 2 ^ n := by
   allowedTheorems #["Finset.sum_range_succ", "Finset.sum_range_one", "mul_add"]]
 theorem sum_of_squares (n : ℕ) :
     6 * ∑ i ∈ Finset.range (n + 1), i ^ 2 = n * (n + 1) * (2 * n + 1) := by
+  sorry
+
+-- Induction from 3, not 0. A theorem named in `using` is cited like any other.
+@[autogradedProof 5,
+  allowedTactics #["induction", "norm_num", "rewrite", "linarith"],
+  allowedTheorems #["Nat.le_induction", "pow_succ"]]
+theorem two_n_add_one_le_pow (n : ℕ) (hn : 3 ≤ n) : 2 * n + 1 ≤ 2 ^ n := by
   sorry
 
 -- ## Counting
@@ -125,6 +139,14 @@ theorem two_mul_le_sq_add_sq (a b : ℝ) : 2 * a * b ≤ a ^ 2 + b ^ 2 := by
   allowedTactics #["by_contra", "rewrite", "have", "linarith", "exact"],
   allowedTheorems #["not_le"]]
 theorem le_zero_of_le_all_pos (a : ℝ) (h : ∀ ε > 0, a ≤ ε) : a ≤ 0 := by
+  sorry
+
+-- An iff: one direction factors, the other substitutes each case.
+@[autogradedProof 5,
+  allowedTactics #["constructor", "intro", "have", "ring_nf", "linarith", "rcases", "left",
+    "right", "rewrite", "norm_num", "cdot", "<;>"],
+  allowedTheorems #["mul_eq_zero"]]
+theorem sq_eq_one_iff_cases (x : ℝ) : x ^ 2 = 1 ↔ x = 1 ∨ x = -1 := by
   sorry
 
 @[autogradedProof 5,

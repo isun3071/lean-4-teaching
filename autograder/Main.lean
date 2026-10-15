@@ -617,15 +617,23 @@ def tacticKinds (env : Environment) : PersistentHashMap SyntaxNodeKind Unit :=
 /-- The name a student would recognize a tactic node by: the keyword they typed.
 
 Every tactic node's first child is an atom holding that keyword (`rewrite`, `rfl`,
-`intro`), so this reports exactly what appears in the source. The fallback covers
-infix combinators such as `<;>`, whose first child is a nested tactic rather than an
-atom; those are named by the last component of their syntax kind. -/
+`intro`), so this reports exactly what appears in the source. Otherwise it is named by the
+last component of its syntax kind, which gives `cdot` for a bullet. An infix combinator
+such as `<;>` has an auto-generated kind (`tactic_<;>_`) that no instructor would write,
+so it is named by its operator instead. -/
 def tacticDisplayName (stx : Syntax) : String :=
   match stx with
   | .node _ k args =>
     match args[0]? with
     | some (Lean.Syntax.atom _ v) => v
-    | _ => (k.components.getLastD `unknown).toString
+    | _ =>
+      let last := match k with
+        | .str _ c => c
+        | _ => "unknown"
+      let op? := args.findSome? fun
+        | Lean.Syntax.atom _ v => some v
+        | _ => none
+      if last.startsWith "tactic_" then op?.getD last else last
   | _ => "<malformed>"
 
 /-- Every tactic node anywhere inside `stx`, outermost first.

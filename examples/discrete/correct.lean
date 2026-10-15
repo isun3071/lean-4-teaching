@@ -1,4 +1,4 @@
--- expect: 85/85
+-- expect: 100/100
 -- Every problem solved within its lists.
 import Mathlib.Basic.Real.Basic
 import Mathlib.Tactic.Ring
@@ -94,6 +94,12 @@ theorem prime_dvd_square (p a : ℕ) (hp : p.Prime) : p ∣ a * a → p ∣ a :=
 
 -- ## Induction
 
+theorem sq_mod_five_ne_two (n : ℕ) : n ^ 2 % 5 ≠ 2 := by
+  rewrite [Nat.pow_mod]
+  have hr : n % 5 < 5 := Nat.mod_lt n (by norm_num)
+  have hall : ∀ r : Fin 5, r.val ^ 2 % 5 ≠ 2 := by decide
+  exact hall ⟨n % 5, hr⟩
+
 theorem powSum_succ (n : ℕ) : powSum n + 1 = 2 ^ n := by
   induction n with
   | zero => rfl
@@ -113,6 +119,13 @@ theorem sum_of_squares (n : ℕ) :
 
 -- ## Counting
 
+theorem two_n_add_one_le_pow (n : ℕ) (hn : 3 ≤ n) : 2 * n + 1 ≤ 2 ^ n := by
+  induction n, hn using Nat.le_induction with
+  | base => norm_num
+  | succ k hk ih =>
+    rewrite [pow_succ]
+    linarith
+
 theorem choose_two_step (n : ℕ) : Nat.choose (n + 1) 2 = Nat.choose n 2 + n := by
   rewrite [Nat.choose_succ_succ, Nat.choose_one_right, add_comm]
   rfl
@@ -129,6 +142,20 @@ theorem le_zero_of_le_all_pos (a : ℝ) (h : ∀ ε > 0, a ≤ ε) : a ≤ 0 := 
   rewrite [not_le] at hn
   have h2 := h (a / 2) (by linarith)
   linarith
+
+theorem sq_eq_one_iff_cases (x : ℝ) : x ^ 2 = 1 ↔ x = 1 ∨ x = -1 := by
+  constructor
+  · intro h
+    have h2 : (x - 1) * (x + 1) = 0 := by
+      ring_nf
+      linarith
+    rcases mul_eq_zero.mp h2 with h3 | h3
+    · left
+      linarith
+    · right
+      linarith
+  · intro h
+    rcases h with h | h <;> rewrite [h] <;> norm_num
 
 theorem lt_by_calc (a b c : ℝ) (h1 : a < b) (h2 : b ≤ c) : a < c + 1 := by
   calc a < b := h1

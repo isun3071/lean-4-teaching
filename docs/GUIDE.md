@@ -28,7 +28,8 @@ theorem problem_2 (a b c d : ℝ) : a < b → c < d → a + c < b + d := by
   errors in your problem set.
 * `allowedTactics` specifies what tactics your students may use. Note that `rw` and
   `rewrite` are different tactics and bullets are `"cdot"`. Otherwise, spell them exactly
-  as you'd use them. Omitting this allows every tactic, including `grind` and `simp` that can
+  as you'd use them, including combinators such as `"<;>"`; the tactics on either side of a
+  combinator must be permitted too. Omitting this allows every tactic, including `grind` and `simp` that can
   solve many exercises in one line. It is recommended you use this to ensure students learn 
   how to actually prove theorems in Lean instead of shortcutting.
 * `allowedTheorems` lists the only library theorems a proof may invoke (i.e. theorems that come
