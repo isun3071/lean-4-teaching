@@ -1,0 +1,43 @@
+# Grades the sample submissions in examples/ on every push, so a change to the grader
+# that breaks an allowlist, or wrongly fails a correct proof, is caught here rather than
+# by somebody's students.
+name: examples
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  grade:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install the pinned Lean toolchain
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh \
+            | sh -s -- -y --default-toolchain "$(cat lean-toolchain)"
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+
+      - name: Fetch prebuilt Mathlib for the modules the problem sets import
+        run: |
+          modules=$(cat ProblemSets/*.lean CourseLib.lean CourseLib/*.lean 2>/dev/null \
+            | grep -E '^[[:space:]]*import[[:space:]]' | tr -s ' \t' '\n' \
+            | grep -E '^Mathlib(\.|$)' | sort -u)
+          if [ -n "$modules" ]; then
+            echo "Fetching: $modules"
+            lake exe cache get $modules
+          else
+            echo "No Mathlib imports."
+          fi
+
+      - name: Build the course library and the grader
+        run: lake build CourseLib autograder AutograderTests comparator lean4export
+
+      - name: Grade the Mathlib examples
+        run: ./run_suite.sh ProblemSets/Template.lean examples/*.lean
+
+      - name: Grade the CourseLib examples
+        run: ./run_suite.sh ProblemSets/TemplateCourseLib.lean examples/courselib/*.lean

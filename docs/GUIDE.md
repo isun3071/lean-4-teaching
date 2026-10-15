@@ -40,6 +40,12 @@ theorem problem_2 (a b c d : ℝ) : a < b → c < d → a + c < b + d := by
   Notation your problem set declares is yours and stays fine, as long as the student leaves
   it unchanged, and a problem with no allowlists is unaffected -- so if you want students
   writing macros, leave the allowlists off that problem.
+* `autogradedDef` grades a definition rather than a proof, and is inherited from the
+  upstream autograder. It checks the student's definition is *definitionally equal* to
+  yours, so a correct but differently-written implementation fails, and every theorem
+  mentioning that definition then fails statement matching too. Your problem set must also
+  contain the real implementation, so it is no longer safe to hand out. Most courses are
+  better served by putting the definition in the handout and grading proofs about it.
 * `gradedByHand` denotes a problem you want to manually grade. Add a manual grading entry
   to award points for problems you denote with this header. 
 

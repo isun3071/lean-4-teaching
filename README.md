@@ -22,6 +22,7 @@ Install [elan](https://github.com/leanprover/elan), then:
 ```bash
 lake update && lake build && lake build autograder
 ./run_suite.sh ProblemSets/Template.lean examples/*.lean
+./run_suite.sh ProblemSets/TemplateCourseLib.lean examples/courselib/*.lean
 ```
 
 This grades the sample submissions in `examples/` and validates each score
@@ -29,7 +30,8 @@ against what's expected.
 
 ## Create your own pset:
 
-Copy `ProblemSets/Template.lean` and write your problems. Comments are in there
+Copy `ProblemSets/Template.lean` and write your problems, or
+`ProblemSets/TemplateCourseLib.lean` for a course that avoids Mathlib. Comments are in there
 to help you walk through configuration. Then:
 
 ```bash
