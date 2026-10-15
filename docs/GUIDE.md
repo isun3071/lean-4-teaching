@@ -10,6 +10,9 @@ Learn more about this autograder beyond the README and `ProblemSets/Template.lea
 problems left with `sorry` placeholders.
 * **Submission:** the handout as a student hands it back with their answers filled in.
 * **`Template.lean`:** an example problem set to copy when you write your own.
+* **`DiscreteMath.lean`:** a fuller example, with one problem per discrete-math topic
+  (logic, sets, divisibility, induction, counting, inequalities) and the allowlists each
+  would get.
 
 ## Attributes
 

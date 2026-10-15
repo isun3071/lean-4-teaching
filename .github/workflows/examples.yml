@@ -42,5 +42,8 @@ jobs:
       - name: Grade the Mathlib examples
         run: ./run_suite.sh ProblemSets/Template.lean examples/*.lean
 
+      - name: Grade the discrete mathematics examples
+        run: ./run_suite.sh ProblemSets/DiscreteMath.lean examples/discrete/*.lean
+
       - name: Grade the CourseLib examples
         run: ./run_suite.sh ProblemSets/TemplateCourseLib.lean examples/courselib/*.lean

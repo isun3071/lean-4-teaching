@@ -12,7 +12,8 @@ set the "sheet", and some names (`matchesStencil`) say "stencil".
 
 ```
 ProblemSets/        problem sets; make_autograder.sh only accepts problem sets here
-examples/           sample submissions against ProblemSets/Template.lean, `-- expect: N/M` first lines
+examples/           sample submissions against ProblemSets/Template.lean, `-- expect: N/M` first lines;
+                    examples/courselib/ and examples/discrete/ against TemplateCourseLib and DiscreteMath
 CourseLib.lean, CourseLib/  library for problem sets without Mathlib: Shims.lean + Extras.lean
 autograder/         grading engine, derived from robertylewis/lean4-autograder-main
   Main.lean         the grader (~1600 lines)
@@ -122,6 +123,7 @@ lake exe autograder --local SUBMISSION PROBLEM_SET    # submission first
   anything they cannot fully see, but never reject a proof for plumbing the student did
   not write.
 - **Accepted gaps:**
-  - dot notation escapes the theorem check;
+  - dot notation (`h.symm`, `(foo h).mp`) escapes the theorem check: `identsIn` skips the
+    field after a dot, so `(…).mp` is not mistaken for a citation of `Iff.mp`;
   - theorems that searching tactics find are governed only by the tactic list;
   - no sandbox on Gradescope's 4.14 kernel.

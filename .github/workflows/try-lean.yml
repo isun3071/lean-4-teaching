@@ -90,6 +90,10 @@ jobs:
         if: steps.pick.outputs.skip != 'true'
         run: ./run_suite.sh ProblemSets/Template.lean examples/*.lean
 
+      - name: Grade the discrete mathematics examples
+        if: steps.pick.outputs.skip != 'true'
+        run: ./run_suite.sh ProblemSets/DiscreteMath.lean examples/discrete/*.lean
+
       - name: Grade the CourseLib examples
         if: steps.pick.outputs.skip != 'true'
         run: ./run_suite.sh ProblemSets/TemplateCourseLib.lean examples/courselib/*.lean

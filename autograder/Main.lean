@@ -870,8 +870,12 @@ student wrote*. The proof term alone would bury the signal: a single `rewrite` p
 identifiers in the source keeps exactly what was named, followed through the student's own
 helper lemmas. -/
 
-/-- Every identifier written anywhere in `stx`. -/
+/-- Every identifier written anywhere in `stx`, except the field after a dot: in
+`(Nat.Prime.dvd_mul hp).mp` the `mp` names a projection, not a theorem the student cited,
+and counting it would match `Iff.mp`. `h.mp` is one identifier and never matched, so this
+treats both spellings alike. -/
 partial def identsIn (stx : Syntax) (acc : Array Name := #[]) : Array Name :=
+  if stx.getKind == ``Lean.Parser.Term.proj then identsIn stx[0] acc else
   let acc := if stx.isIdent then acc.push stx.getId else acc
   stx.getArgs.foldl (fun a c => identsIn c a) acc
 

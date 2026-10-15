@@ -23,6 +23,7 @@ Install [elan](https://github.com/leanprover/elan), then:
 lake update && lake build && lake build autograder
 ./run_suite.sh ProblemSets/Template.lean examples/*.lean
 ./run_suite.sh ProblemSets/TemplateCourseLib.lean examples/courselib/*.lean
+./run_suite.sh ProblemSets/DiscreteMath.lean examples/discrete/*.lean
 ```
 
 This grades the sample submissions in `examples/` and validates each score
@@ -46,7 +47,7 @@ If you want more information, [docs/GUIDE.md](docs/GUIDE.md) covers imports, tes
 
 * Each problem is all or nothing. For partial credit, split a problem into
   separately graded theorems.
-* A theorem reached through dot notation, such as `h.symm`, is not checked against the
+* A theorem reached through dot notation, such as `h.symm` or `(foo h).mp`, is not checked against the
   theorem list.
 * Theorems that `simp`, `grind`, `exact?` or `norm_num` find are
   controlled only by keeping those tactics off the tactic list. It is recommended that you
