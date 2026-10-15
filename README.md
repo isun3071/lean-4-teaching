@@ -62,7 +62,7 @@ If you want more information, [docs/GUIDE.md](docs/GUIDE.md) covers imports, tes
   can silently re-point any tactic and the source does not show which proofs it touched.
   Tell students not to write their own macros. If you want to teach macro writing, leave
   the allowlists off that problem.
-* This grader is fixed to Lean version 4.34. Lean releases monthly, and a weekly CI job
+* This grader is fixed to Lean version 4.35. Lean releases monthly, and a weekly CI job
   (`try-lean.yml`) tests the latest release and hands you the upgrade as a patch when it
   passes. 
 

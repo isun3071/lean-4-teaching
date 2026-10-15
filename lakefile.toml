@@ -15,7 +15,7 @@ defaultTargets = ["CourseLib"]
 [[require]]
 name = "mathlib"
 scope = "leanprover-community"
-rev = "v4.34.0"
+rev = "v4.35.0"
 
 # The Gradescope autograder. Vendored into this repository rather than required over
 # the network: it is ours to change freely for the course's needs, with no upstream to

@@ -2,7 +2,9 @@
 
 apt-get install -y jq
 
-curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf | sh -s -- -y --default-toolchain leanprover/lean4:v4.34.0
+# Install the toolchain the project pins, so lean-toolchain is the one place to change it.
+curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf \
+  | sh -s -- -y --default-toolchain "$(cat /autograder/source/lean-toolchain)"
 
 # ~/.elan/bin/elan default leanprover/lean4:nightly
 

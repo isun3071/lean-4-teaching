@@ -2,7 +2,7 @@
 
 Exhaustive list of every declaration in core Lean whose type is an **equation** in the `Nat` or `Int` namespaces — i.e. everything `rw`, `simp [..]`, and `rfl` can consume.
 
-Generated against toolchain `v4.33.1`; this project now pins `v4.34.0`, so a handful of entries
+Generated against toolchain `v4.33.1`; this project now pins `v4.35.0`, so a handful of entries
 may differ. `COMMON_LEMMAS.md` is checked against the pinned toolchain and is the one to
 trust when they disagree.
 
