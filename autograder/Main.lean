@@ -698,8 +698,14 @@ those guards only ever see the exercise's declaration and the helpers it depends
 kind's last component is matched by prefix so that variants (`notation3`, `syntaxAbbrev`,
 `syntaxCat`) are covered too. -/
 partial def syntaxExtension? (stx : Syntax) : Option String :=
+  let kind := stx.getKind
   let extension? : Option String :=
-    match stx.getKind with
+    -- `attribute [local simp] foo` puts a library theorem into a tactic's reach without
+    -- naming it in the proof, so the citation check never sees it. Matched exactly rather
+    -- than by prefix: `Term.attributes` is the node inside every `@[...]`, and flagging
+    -- that would refuse any declaration carrying an attribute at all.
+    if kind == `Lean.Parser.Command.attribute then some "attribute"
+    else match kind with
     | .str _ last =>
       if ["notation", "macro", "syntax", "elab", "mixfix", "infix", "prefix", "postfix"].any
           (fun p => last.startsWith p) then some last else none
@@ -1585,6 +1591,18 @@ unsafe def main (args : List String) : IO Unit := do
   if messages.hasErrors && !sameImports header sheetHeader then
     exitWithError (instructorInfo := (← getErrorsStr messages)) <|
       "Your file could not be graded.\n" ++ importsChangedMessage sheetHeader
+  -- `sameImports` above is consulted only when the header failed to load, so a submission
+  -- that compiles while importing something extra was accepted in silence. An extra import
+  -- can strengthen a tactic the exercise permits -- a `norm_num` or `simp` extension, say --
+  -- so it is refused whether or not the file compiles. Leaving one out is not refused: that
+  -- can only take things out of scope, never add them, and a student who drops an import
+  -- their proof never needed should not lose the assignment for it.
+  let sheetModules := importedModules sheetHeader
+  let extraImports := (importedModules header).filter (!sheetModules.contains ·)
+  unless extraImports.isEmpty do
+    exitWithError <|
+      s!"Your file imports {String.intercalate ", " (extraImports.toList.map (s!"`{·}`"))}, "
+        ++ "which this assignment does not.\n" ++ importsChangedMessage sheetHeader
   if messages.hasErrors then
     exitWithError <|
       "Your Lean file could not be processed because its header contains "

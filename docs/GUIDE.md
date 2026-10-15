@@ -33,7 +33,7 @@ theorem problem_2 (a b c d : ℝ) : a < b → c < d → a + c < b + d := by
   theorems, and lemmas your problem set provides are allowed across all problems. Note that 
   misspelling names prevents your problem set from compiling.
 * On any problem with `allowedTactics` or `allowedTheorems`, a submission that defines its
-  own `notation`, `macro`, `macro_rules`, `syntax` or `elab` is refused: those let a proof
+  own `notation`, `macro`, `macro_rules`, `syntax`, `elab` or `attribute` is refused: those let a proof
   show a permitted name while something else does the work. The refusal covers every
   restricted problem in the file, since a macro can re-point any tactic and nothing in the
   source says which proofs it touched, so tell students not to write their own macros.
@@ -62,9 +62,10 @@ max. Only import the modules a problem set really needs. For example:
   `nth_rewrite`.
 * `Mathlib.Tactic.Ring`: the `ring` tactic.
 
-Student submissions must import exactly what your handout imports. If students modify imports
-in any way, the submission will fail, get a 0, and the student will be prompted to fix the imports
-to match what you specify.
+Student submissions must not import anything your handout does not. An extra import fails the
+submission and scores 0 even when the file compiles, since it can strengthen a tactic you
+permit; the student is told which import to remove. Leaving one out is not refused, because it
+can only take things out of scope.
 
 `CourseLib` is an optional lightweight library for problem sets that avoid Mathlib; see `CourseLib.lean`
 if you want to use it.

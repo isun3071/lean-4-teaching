@@ -51,9 +51,10 @@ If you want more information, [docs/GUIDE.md](docs/GUIDE.md) covers imports, tes
   disallow `simp`, `grind`, `exact?` to ensure students learn how to actually prove theorems
   in Lean instead of shortcutting.
 * Submissions are not sandboxed as Gradescope's kernel (4.14) predates the features it needs.
-* Submissions with modified imports will fail and score 0. A student submission must import 
-  exactly what you specify in your problem set.
-* A submission that defines its own `notation`, `macro`, `macro_rules`, `syntax` or `elab`
+* A submission that imports anything your problem set does not fails and scores 0, whether
+  or not it compiles: an extra import can strengthen a tactic you permit. Leaving one out is
+  allowed, since that can only take things out of scope.
+* A submission that defines its own `notation`, `macro`, `macro_rules`, `syntax`, `elab` or `attribute`
   scores 0 on every problem with an allowlist, not just the problem that uses it: a macro
   can silently re-point any tactic and the source does not show which proofs it touched.
   Tell students not to write their own macros. If you want to teach macro writing, leave
