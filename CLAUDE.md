@@ -21,7 +21,11 @@ gradescope/         setup.sh, run_autograder, make_autograder.sh, config.json
 run_suite.sh        grades files against a problem set and compares with their expect lines
 ```
 
-Pinned to Lean and Mathlib **v4.34.0**, with Comparator at its v4.34.0 tag.
+Pinned to Lean and Mathlib **v4.34.0**, with Comparator at its v4.34.0 tag. Upgrades are
+tested in CI, not locally: `.github/workflows/try-lean.yml` bumps the four pins
+(`lean-toolchain`, `autograder/lean-toolchain`, the Mathlib `rev` in `lakefile.toml`,
+Comparator's tag in `autograder/lakefile.lean`), runs `lake update`, compiles
+`ci/tactic_probe.lean` and grades the examples, then uploads the bump as `upgrade.patch`.
 
 ## How grading runs
 

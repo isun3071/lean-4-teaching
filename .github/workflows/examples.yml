@@ -36,6 +36,9 @@ jobs:
       - name: Build the course library and the grader
         run: lake build CourseLib autograder AutograderTests comparator lean4export
 
+      - name: Compile the tactic probe
+        run: lake env lean ci/tactic_probe.lean
+
       - name: Grade the Mathlib examples
         run: ./run_suite.sh ProblemSets/Template.lean examples/*.lean
 

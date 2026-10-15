@@ -1,0 +1,105 @@
+# Tries the grader on a newer Lean and Mathlib without changing the repository: bumps the
+# pinned versions in this run's checkout, builds, compiles the tactic probe and grades the
+# examples. Runs weekly against the latest stable Lean release, and on demand for any
+# version, including release candidates (Actions > try newer Lean > Run workflow).
+#
+# A passing run uploads the version bump as `upgrade.patch`. To upgrade, download it from
+# the run's page and `git apply upgrade.patch`.
+name: try newer Lean
+
+on:
+  schedule:
+    - cron: "23 6 * * 1"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Lean version, e.g. v4.35.0 or v4.36.0-rc1. Empty means the latest stable release."
+        required: false
+
+jobs:
+  try:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      GH_TOKEN: ${{ github.token }}
+      MATHLIB_NO_CACHE_ON_UPDATE: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Pick the version
+        id: pick
+        run: |
+          v="${{ inputs.version }}"
+          [ -n "$v" ] || v=$(gh api repos/leanprover/lean4/releases/latest --jq .tag_name)
+          pinned=$(sed 's/.*://' lean-toolchain)
+          echo "Pinned: $pinned. Trying: $v."
+          if [ "$v" = "$pinned" ]; then
+            echo "::notice::Already on $v; nothing to try."
+            echo "skip=true" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          # Mathlib and Comparator tag each Lean release a day or so after it ships.
+          for repo in leanprover-community/mathlib4 leanprover/comparator; do
+            if ! gh api "repos/$repo/git/ref/tags/$v" > /dev/null 2>&1; then
+              echo "::notice::$repo has no $v tag yet; try again in a few days."
+              echo "skip=true" >> "$GITHUB_OUTPUT"; exit 0
+            fi
+          done
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+
+      - name: Bump the pinned versions
+        if: steps.pick.outputs.skip != 'true'
+        run: |
+          v="${{ steps.pick.outputs.version }}"
+          echo "leanprover/lean4:$v" > lean-toolchain
+          echo "leanprover/lean4:$v" > autograder/lean-toolchain
+          sed -i -E "s/^rev = \"v[^\"]*\"/rev = \"$v\"/" lakefile.toml
+          sed -i -E "s|(comparator\" @ \")v[^\"]*\"|\1$v\"|" autograder/lakefile.lean
+          git diff --stat
+
+      - name: Install the Lean toolchain
+        if: steps.pick.outputs.skip != 'true'
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh \
+            | sh -s -- -y --default-toolchain "$(cat lean-toolchain)"
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+
+      - name: Update the dependencies
+        if: steps.pick.outputs.skip != 'true'
+        run: |
+          lake update
+          (cd autograder && lake update)
+
+      - name: Fetch prebuilt Mathlib for the modules the problem sets import
+        if: steps.pick.outputs.skip != 'true'
+        run: |
+          modules=$(cat ProblemSets/*.lean CourseLib.lean CourseLib/*.lean 2>/dev/null \
+            | grep -E '^[[:space:]]*import[[:space:]]' | tr -s ' \t' '\n' \
+            | grep -E '^Mathlib(\.|$)' | sort -u)
+          echo "Fetching: $modules"
+          lake exe cache get $modules
+
+      - name: Build the course library and the grader
+        if: steps.pick.outputs.skip != 'true'
+        run: lake build CourseLib autograder AutograderTests comparator lean4export
+
+      - name: Compile the tactic probe
+        if: steps.pick.outputs.skip != 'true'
+        run: lake env lean ci/tactic_probe.lean
+
+      - name: Grade the Mathlib examples
+        if: steps.pick.outputs.skip != 'true'
+        run: ./run_suite.sh ProblemSets/Template.lean examples/*.lean
+
+      - name: Grade the CourseLib examples
+        if: steps.pick.outputs.skip != 'true'
+        run: ./run_suite.sh ProblemSets/TemplateCourseLib.lean examples/courselib/*.lean
+
+      - name: Save the version bump as a patch
+        if: steps.pick.outputs.skip != 'true'
+        run: git diff > upgrade.patch
+
+      - uses: actions/upload-artifact@v4
+        if: steps.pick.outputs.skip != 'true'
+        with:
+          name: upgrade-${{ steps.pick.outputs.version }}
+          path: upgrade.patch
