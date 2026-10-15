@@ -157,7 +157,8 @@ may cite. A theorem is cited when the proof depends on it *and* the student wrot
 name, in the exercise or in a lemma of their own the exercise relies on. Theorems a tactic
 uses on its own -- the plumbing behind `rewrite`, whatever `simp` or `norm_num` finds --
 are not citations; control those through `allowedTactics`. Lemmas the problem set itself
-states and proves, and the other exercises, may always be cited.
+states and proves, and the other exercises, may be cited unless `allowedLemmas` says
+otherwise.
 
 A name also permits namespaced versions of it: `"add_comm"` permits `Nat.add_comm`. Every
 name must exist when the problem set is compiled, so a misspelling fails the problem set instead
@@ -180,5 +181,38 @@ initialize allowedTheoremsAttr : ParametricAttribute (Array String) ←
               throwErrorAt s "allowedTheorems: no theorem named `{n}` is in scope"
           return thms.getElems.map (fun s => s.getString)
         | _ => throwError "Invalid allowedTheorems attribute"
+    afterSet := λ _ _ => do pure ()
+  }
+
+/-! ## Restricting which problem-set results a proof may use
+
+`@[allowedLemmas #["problem_3", "problem_4"]]` names the only theorems from the problem set
+itself -- other exercises and lemmas it provides -- that a proof may use. Without it every one
+may be used. `@[allowedLemmas #[]]` rules them all out. A use counts whether or not the student
+wrote the name, so a provided lemma tagged `@[simp]` counts when `simp` uses it. Lemmas the
+student writes are still allowed, and are held to the same list.
+
+Every name must be a theorem declared earlier in the problem set. Imported theorems belong
+in `allowedTheorems`. -/
+syntax:50 (name := allowed_lemmas) "allowedLemmas" "#[" sepBy(str, ",") "]" : attr
+
+initialize allowedLemmasAttr : ParametricAttribute (Array String) ←
+  registerParametricAttribute {
+    name := `allowed_lemmas
+    descr := "Specifies the only problem-set theorems a student's proof may use"
+    getParam := λ _ stx => do
+      match stx with
+        | `(attr| allowedLemmas #[$thms,*]) =>
+          let env ← getEnv
+          for s in thms.getElems do
+            let n := s.getString.toName
+            match env.find? n with
+            | none => throwErrorAt s "allowedLemmas: no theorem named `{n}` is declared above"
+            | some (.thmInfo _) =>
+              if (env.getModuleIdxFor? n).isSome then
+                throwErrorAt s "allowedLemmas: `{n}` is imported; list it in allowedTheorems"
+            | some _ => throwErrorAt s "allowedLemmas: `{n}` is not a theorem"
+          return thms.getElems.map (fun s => s.getString)
+        | _ => throwError "Invalid allowedLemmas attribute"
     afterSet := λ _ _ => do pure ()
   }

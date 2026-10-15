@@ -38,8 +38,8 @@ Pinned to Lean and Mathlib **v4.34.0**, with Comparator at its v4.34.0 tag.
    1. Elaborates the problem set, then the submission, in-process.
    2. A failed header with imports differing from the problem set's (`sameImports`) tells
       the student which imports to restore.
-   3. Per graded exercise, `gradeSubmission` runs `brokenVerdict <|> tacticVerdict <|>
-      theoremVerdict`; the first failure is final.
+   3. Per graded exercise, `gradeSubmission` runs `extensionVerdict <|> brokenVerdict <|>
+      tacticVerdict <|> theoremVerdict <|> lemmaVerdict`; the first failure is final.
    4. Survivors go to Comparator, one invocation per exercise.
    5. Results are sorted into problem set order, and `@[gradedByHand]` entries are appended.
 
@@ -67,6 +67,12 @@ Pinned to Lean and Mathlib **v4.34.0**, with Comparator at its v4.34.0 tag.
     helpers.
   - A theorem counts as cited only if it is on the receipt **and** written. The cited
     set is checked with `Name.isSuffixOf`.
+- **Problem-set lemmas** (`allowedLemmas`): `proofDeps` also records the problem set's
+  theorems the term reaches (`sheet`), directly or through the student's helpers, but
+  not through another problem-set theorem. No written-name filter: there is no plumbing
+  among them. `lemmaVerdict` compares by exact name and fails closed on untraceable
+  helpers, since `proofDeps` skips those silently. Term-based, so `extensionVerdict`
+  does not cover it.
 
 **Files with errors** (`cleanSubmission`). Comparator rebuilds from source, and any
 error fails the rebuild, so it gets a cleaned copy instead:

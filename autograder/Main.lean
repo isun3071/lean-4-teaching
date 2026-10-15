@@ -882,11 +882,12 @@ def tacticNamesIn (kinds : PersistentHashMap SyntaxNodeKind Unit) (stx : Syntax)
     let n := tacticDisplayName s
     if acc.contains n then acc else acc.push n
 
-/-- What the proof of an exercise rests on: the student's own declarations (`own`), other
-exercises it cites (`graded`), and the library theorems it cites (`cited`). -/
+/-- What the proof of an exercise rests on: the student's own declarations (`own`), the
+problem set's theorems it uses (`sheet`: other exercises and provided lemmas), and the
+library theorems it cites (`cited`). -/
 structure ProofDeps where
   own : Array Name
-  graded : Array Name
+  sheet : Array Name
   cited : Array Name
 
 def proofDeps (sheet submission : Environment) (declCmds : Std.HashMap Name Syntax)
@@ -896,7 +897,7 @@ def proofDeps (sheet submission : Environment) (declCmds : Std.HashMap Name Synt
   let mut seen : NameSet := NameSet.empty.insert exercise
   let mut todo : Array Name := #[exercise]
   let mut own : Array Name := #[]
-  let mut graded : Array Name := #[]
+  let mut sheetThms : Array Name := #[]
   let mut library : Array Name := #[]
   while !todo.isEmpty do
     let c := todo.back!
@@ -913,8 +914,8 @@ def proofDeps (sheet submission : Environment) (declCmds : Std.HashMap Name Synt
       | none => continue
       | some r =>
         if r != exercise && matchesStencil sheet submission r then
-          if (autogradedProofAttr.getParam? sheet r).isSome && !graded.contains r then
-            graded := graded.push r
+          if let some (.thmInfo _) := sheet.find? r then
+            if !sheetThms.contains r then sheetThms := sheetThms.push r
           continue
         if r != exercise && !own.contains r then own := own.push r
         todo := todo.push d
@@ -924,12 +925,12 @@ def proofDeps (sheet submission : Environment) (declCmds : Std.HashMap Name Synt
   let named (c : Name) : Bool := idents.any fun n =>
     c == n || c.toString.endsWith ("." ++ n.toString)
   let cited := (library.filter named).qsort (·.toString < ·.toString)
-  return { own, graded, cited }
+  return { own, sheet := sheetThms, cited }
 
 /-- One line for the staff-only output describing how `exercise` was proved. -/
 def auditLine (sheet submission : Environment) (declCmds : Std.HashMap Name Syntax)
     (kinds : PersistentHashMap SyntaxNodeKind Unit) (exercise : Name) : String := Id.run do
-  let { own, graded, cited } := proofDeps sheet submission declCmds exercise
+  let { own, sheet := sheetThms, cited } := proofDeps sheet submission declCmds exercise
   let list (a : Array String) := if a.isEmpty then "none" else String.intercalate ", " a.toList
   let tactics := match declCmds[exercise]? with
     | some c => list (tacticNamesIn kinds c)
@@ -945,7 +946,8 @@ def auditLine (sheet submission : Environment) (declCmds : Std.HashMap Name Synt
   let mut line := s!"[audit] {exercise}  tactics: {tactics}"
   line := line ++ s!"  |  theorems cited: {list (cited.map toString)}"
   unless own.isEmpty do line := line ++ s!"  |  own lemmas: {list ownDescr}"
-  unless graded.isEmpty do line := line ++ s!"  |  cites exercises: {list (graded.map toString)}"
+  unless sheetThms.isEmpty do
+    line := line ++ s!"  |  problem-set theorems used: {list (sheetThms.map toString)}"
   return line
 
 /-- Student-facing explanation of a theorem violation. -/
@@ -983,6 +985,38 @@ def theoremVerdict (sheet submission : Environment) (declCmds : Std.HashMap Name
         let bad := (proofDeps sheet submission declCmds exercise).cited.filter fun c =>
           !allowed.any (·.toName.isSuffixOf c)
         if bad.isEmpty then none else some (theoremViolationMessage bad allowed)
+
+/-- Student-facing explanation of an `allowedLemmas` violation. -/
+def lemmaViolationMessage (bad : Array Name) (allowed : Array String) : String :=
+  let list (a : Array String) := String.intercalate ", " (a.toList.map (s!"`{·}`"))
+  s!"This exercise restricts which results from the problem set you may use.\nYour proof, "
+    ++ s!"counting any lemmas of your own it relies on, uses {list (bad.map toString)}, which "
+    ++ (if bad.size == 1 then "is" else "are") ++ " not permitted here.\n"
+    ++ (if allowed.isEmpty then "This exercise may not use any exercise or lemma from the problem set."
+        else s!"Results from the problem set you may use here: {list allowed}.")
+
+/-- `some message` when `@[allowedLemmas]` on `exercise` rules out its proof: the proof uses
+a problem-set theorem off the list, directly or through a lemma of the student's own. A use
+hidden in a declaration that cannot be traced fails closed, as the other checks do. -/
+def lemmaVerdict (sheet submission : Environment) (declCmds : Std.HashMap Name Syntax)
+    (exercise : Name) : Option String :=
+  match allowedLemmasAttr.getParam? sheet exercise with
+  | none => none
+  | some allowed =>
+    match declCmds[exercise]?, helperDeps sheet submission declCmds exercise with
+    | none, _ =>
+      some ("Your proof of this exercise could not be checked against the results it may "
+        ++ "use, so it cannot be awarded credit.\nSubmit the proof directly, as an ordinary "
+        ++ "theorem, rather than generating it.")
+    | _, .error d =>
+      some (s!"Your proof of this exercise relies on `{d}`, which could not be traced to "
+        ++ "a declaration in your file, so it could not be checked against the results it "
+        ++ "may use.\nDefine helper lemmas as ordinary top-level theorems, outside any "
+        ++ "namespace.")
+    | some _, .ok _ =>
+      let bad := (proofDeps sheet submission declCmds exercise).sheet.filter fun c =>
+        !allowed.any (·.toName == c)
+      if bad.isEmpty then none else some (lemmaViolationMessage bad allowed)
 
 /-! ### Grading a file with errors in it
 
@@ -1297,6 +1331,7 @@ def gradeSubmission (sheet submission : Environment)
                           else some (helperViolationMessage h hbad allowed)
           let verdict := extensionVerdict name <|> brokenVerdict name <|> tacticVerdict
             <|> theoremVerdict sheet submission declCmds name
+            <|> lemmaVerdict sheet submission declCmds name
           match verdict with
           | none => proofExercises := proofExercises.push (name, pts)
           | some output =>

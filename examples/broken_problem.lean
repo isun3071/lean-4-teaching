@@ -1,4 +1,4 @@
--- expect: 10/20
+-- expect: 20/30
 -- problem_1 has a mistake and does not compile. Only problem_1 loses its points.
 import Mathlib.Basic.Real.Basic
 import Mathlib.Tactic.Ring
@@ -28,7 +28,16 @@ theorem problem_2 (a b c d : ℝ) : a < b → c < d → a + c < b + d := by
   have h4 : b + c < b + d := add_lt_add_right h2 b
   exact lt_trans h3 h4
 
-theorem problem_3 : ∃ n : ℤ, IsEven n ∧ n > 5 := by
+theorem problem_3 (n : ℤ) : IsEven n → IsEven (n ^ 2 + n) := by
+  intro h
+  have hsq : IsEven (n ^ 2) := by
+    obtain ⟨k, hk⟩ := h
+    use 2 * k ^ 2
+    rewrite [← hk]
+    ring
+  exact even_add_even (n ^ 2) n hsq h
+
+theorem problem_4 : ∃ n : ℤ, IsEven n ∧ n > 5 := by
   use 6
   constructor
   use 3

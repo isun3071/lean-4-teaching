@@ -8,7 +8,7 @@ Students fill in their answers in the handout you give them and upload the file 
 * **Accepts all valid submissions:** This grader uses [Comparator](https://github.com/leanprover/comparator) to check proofs with Lean's kernel, which means you don't need to write an answer key.
 In fact, you can reuse the handout you give to students (with some modifications).
 * **Tactic and theorem allowlists:** Limit the tactics and theorems your students may use
-for a problem.
+for a problem, including which earlier problems it may build on.
 * **Independent problem grading:** If one problem fails, it does not affect the rest of the submission. 
 * **Hand-graded problem specification:** Problems where the student must declare a theorem
 and other such problems can be graded by hand.

@@ -1,4 +1,4 @@
--- expect: 0/20
+-- expect: 0/30
 -- An import the problem set does not have. It resolves, so the file compiles, but extra
 -- imports can strengthen a permitted tactic and are refused whether or not it compiles.
 import Mathlib.Basic.Real.Basic
@@ -30,7 +30,16 @@ theorem problem_2 (a b c d : ℝ) : a < b → c < d → a + c < b + d := by
   have h4 : b + c < b + d := add_lt_add_right h2 b
   exact lt_trans h3 h4
 
-theorem problem_3 : ∃ n : ℤ, IsEven n ∧ n > 5 := by
+theorem problem_3 (n : ℤ) : IsEven n → IsEven (n ^ 2 + n) := by
+  intro h
+  have hsq : IsEven (n ^ 2) := by
+    obtain ⟨k, hk⟩ := h
+    use 2 * k ^ 2
+    rewrite [← hk]
+    ring
+  exact even_add_even (n ^ 2) n hsq h
+
+theorem problem_4 : ∃ n : ℤ, IsEven n ∧ n > 5 := by
   use 6
   constructor
   use 3

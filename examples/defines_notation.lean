@@ -1,4 +1,4 @@
--- expect: 0/20
+-- expect: 0/30
 -- Notation of the student's own aliases a theorem problem_2 does not permit, so the name
 -- never appears in the proof. Any problem with an allowlist is refused when a submission
 -- defines syntax; notation the problem set itself declares is the instructor's and is fine.
@@ -30,5 +30,14 @@ theorem problem_2 (a b c d : ℝ) : a < b → c < d → a + c < b + d := by
   intro hab hcd
   exact CHEAT hab hcd
 
-theorem problem_3 : True := by
+theorem problem_3 (n : ℤ) : IsEven n → IsEven (n ^ 2 + n) := by
+  intro h
+  have hsq : IsEven (n ^ 2) := by
+    obtain ⟨k, hk⟩ := h
+    use 2 * k ^ 2
+    rewrite [← hk]
+    ring
+  exact even_add_even (n ^ 2) n hsq h
+
+theorem problem_4 : True := by
   trivial

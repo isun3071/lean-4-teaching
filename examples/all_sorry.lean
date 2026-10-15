@@ -1,4 +1,4 @@
--- expect: 0/20
+-- expect: 0/30
 -- The handout as students receive it, unchanged.
 import Mathlib.Basic.Real.Basic
 import Mathlib.Tactic.Ring
@@ -19,5 +19,8 @@ theorem problem_1 (n : ℤ) : IsEven n → IsEven (n ^ 2) := by
 theorem problem_2 (a b c d : ℝ) : a < b → c < d → a + c < b + d := by
   sorry
 
-theorem problem_3 : True := by
+theorem problem_3 (n : ℤ) : IsEven n → IsEven (n ^ 2 + n) := by
+  sorry
+
+theorem problem_4 : True := by
   sorry

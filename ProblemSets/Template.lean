@@ -34,9 +34,9 @@ import AutograderLib    -- You MUST import this for the autograder to work! Stud
 
 -- ## 2. Definitions and provided lemmas
 --
--- Anything students need goes here, as in the handout. Lemmas you prove here may be
--- used in any problem, whatever the allowlists say, as long as students don't
--- change them.
+-- Anything students need goes here, as in the handout. Lemmas you prove here, and the
+-- problems themselves, may be used in any problem unless you list them with
+-- `allowedLemmas` (see problem_3), as long as students don't change them.
 
 def IsEven (n : ℤ) : Prop := ∃ k : ℤ, 2 * k = n
 
@@ -57,6 +57,8 @@ theorem even_add_even (m n : ℤ) : IsEven m → IsEven n → IsEven (m + n) := 
 --                               out allows `grind`, `simp`, and other one-liner cheat codes!)
 --   allowedTheorems #[...]      a predefined set of theorems you allow besides the ones you specify.
 --                               Leave this out to allow any theorem.
+--   allowedLemmas #[...]        the only problems and provided lemmas from this file the proof
+--                               may use. Leave this out to allow all of them.
 
 -- You do not need to write solutions here. The autograder simply checks if the
 -- student solved the exact goals you specified in each problem however they want
@@ -83,6 +85,13 @@ theorem problem_1 (n : ℤ) : IsEven n → IsEven (n ^ 2) := by
 theorem problem_2 (a b c d : ℝ) : a < b → c < d → a + c < b + d := by
   sorry
 
+-- problem_3 may use `even_add_even` but not problem_1, so the square is worked out directly.
+@[autogradedProof 10,
+  allowedTactics #["intro", "have", "obtain", "use", "rewrite", "ring", "exact"],
+  allowedLemmas #["even_add_even"]]
+theorem problem_3 (n : ℤ) : IsEven n → IsEven (n ^ 2 + n) := by
+  sorry
+
 
 -- ## 4. Problems graded by hand
 --
@@ -91,5 +100,5 @@ theorem problem_2 (a b c d : ℝ) : a < b → c < d → a + c < b + d := by
 -- version at the end of the results. Add a manually graded question for its points.
 
 @[gradedByHand]
-theorem problem_3 : True := by  -- students replace `True` with their own statement
+theorem problem_4 : True := by  -- students replace `True` with their own statement
   sorry

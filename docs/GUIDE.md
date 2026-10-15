@@ -32,6 +32,11 @@ theorem problem_2 (a b c d : ℝ) : a < b → c < d → a + c < b + d := by
   with Lean or as part of Mathlib). Theorems a tactic finds are not included, but definitions,
   theorems, and lemmas your problem set provides are allowed across all problems. Note that 
   misspelling names prevents your problem set from compiling.
+* `allowedLemmas` lists the only theorems from your problem set itself (other problems and
+  lemmas you provide) a proof may use, e.g. `allowedLemmas #["problem_3", "problem_4"]` on
+  problem 5 rules out problems 1 and 2. Omitting it allows all of them; `#[]` allows none.
+  Lemmas the student writes are still fine, but they are held to the same list. Any use
+  counts, including one `simp` makes of a lemma you tagged `@[simp]`.
 * On any problem with `allowedTactics` or `allowedTheorems`, a submission that defines its
   own `notation`, `macro`, `macro_rules`, `syntax`, `elab` or `attribute` is refused: those let a proof
   show a permitted name while something else does the work. The refusal covers every
