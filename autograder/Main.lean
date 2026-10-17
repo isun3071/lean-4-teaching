@@ -959,7 +959,7 @@ def auditLine (sheet submission : Environment) (declCmds : Std.HashMap Name Synt
   line := line ++ s!"  |  theorems cited: {list (cited.map toString)}"
   unless own.isEmpty do line := line ++ s!"  |  own lemmas: {list ownDescr}"
   unless sheetThms.isEmpty do
-    line := line ++ s!"  |  problem-set theorems used: {list (sheetThms.map toString)}"
+    line := line ++ s!"  |  used from the problem set: {list (sheetThms.map toString)}"
   return line
 
 /-- Student-facing explanation of a theorem violation. -/
@@ -981,17 +981,17 @@ def theoremVerdict (sheet submission : Environment) (declCmds : Std.HashMap Name
     match declCmds[exercise]?, helperDeps sheet submission declCmds exercise with
     | none, _ =>
       some ("Your proof of this exercise could not be checked against its "
-        ++ "permitted-theorem list, so it cannot be awarded credit.\nSubmit the proof "
+        ++ "list of permitted theorems, so it cannot be awarded credit.\nSubmit the proof "
         ++ "directly, as an ordinary theorem, rather than generating it.")
     | _, .error d =>
       some (s!"Your proof of this exercise relies on `{d}`, which could not be traced to "
         ++ "a declaration in your file, so it could not be checked against the "
-        ++ "permitted-theorem list.\nDefine helper lemmas as ordinary top-level theorems, "
+        ++ "list of permitted theorems.\nDefine helper lemmas as ordinary theorems, "
         ++ "outside any namespace.")
     | some cmd, .ok helpers =>
       if containsMissing cmd || helpers.any (containsMissing ·.2) then
         some ("Your proof uses syntax that is not available for this assignment, so it "
-          ++ "could not be checked against the permitted-theorem list.\nDo not define "
+          ++ "could not be checked against the list of permitted theorems.\nDo not define "
           ++ "your own notation or tactics.")
       else
         let bad := (proofDeps sheet submission declCmds exercise).cited.filter fun c =>
@@ -1023,7 +1023,7 @@ def lemmaVerdict (sheet submission : Environment) (declCmds : Std.HashMap Name S
     | _, .error d =>
       some (s!"Your proof of this exercise relies on `{d}`, which could not be traced to "
         ++ "a declaration in your file, so it could not be checked against the results it "
-        ++ "may use.\nDefine helper lemmas as ordinary top-level theorems, outside any "
+        ++ "may use.\nDefine helper lemmas as ordinary theorems, outside any "
         ++ "namespace.")
     | some _, .ok _ =>
       let bad := (proofDeps sheet submission declCmds exercise).sheet.filter fun c =>
@@ -1307,13 +1307,13 @@ def gradeSubmission (sheet submission : Environment)
                 -- Elaboration found the declaration but our parse did not, so we have
                 -- nothing to inspect.
                 some ("Your proof of this exercise could not be checked against its "
-                  ++ "permitted-tactic list, so it cannot be awarded credit.\nSubmit the "
+                  ++ "list of permitted tactics, so it cannot be awarded credit.\nSubmit the "
                   ++ "proof directly, as an ordinary theorem, rather than generating it.")
               | some cmd =>
                 if containsMissing cmd then
                   some ("Your proof of this exercise uses syntax that is not available "
                     ++ "for this assignment, so it could not be checked against the "
-                    ++ "permitted-tactic list.\nDo not define your own tactics or import "
+                    ++ "list of permitted tactics.\nDo not define your own tactics or import "
                     ++ "libraries beyond the ones the assignment provides.")
                 else if !containsByBlock cmd then
                   some ("This exercise must be solved with a tactic proof (`:= by ...`), "
@@ -1329,8 +1329,8 @@ def gradeSubmission (sheet submission : Environment)
                     | .error d =>
                       some (s!"Your proof of this exercise relies on `{d}`, which could "
                         ++ "not be traced to a declaration in your file, so it could not "
-                        ++ "be checked against the permitted-tactic list.\nDefine helper "
-                        ++ "lemmas as ordinary top-level theorems, outside any namespace.")
+                        ++ "be checked against the list of permitted tactics.\nDefine helper "
+                        ++ "lemmas as ordinary theorems, outside any namespace.")
                     | .ok helpers =>
                       helpers.findSome? fun (h, hcmd) =>
                         if containsMissing hcmd then
