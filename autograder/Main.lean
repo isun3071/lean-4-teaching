@@ -830,6 +830,11 @@ def helperDeps (sheet submission : Environment) (declCmds : Std.HashMap Name Syn
     for d in v.getUsedConstants do
       if seen.contains d then continue
       seen := seen.insert d
+      -- A matcher only takes a value apart and holds no proof. Lean shares one between
+      -- declarations whose patterns match, naming it after whichever came first, so
+      -- `intro ⟨a, b⟩` in one problem can use `other_problem.match_1`. It says nothing
+      -- about what the proof relies on.
+      if Lean.Meta.isMatcherCore submission d then continue
       -- Imported from the course prelude or from core: not the student's to check.
       if (submission.getModuleIdxFor? d).isSome then continue
       match declRoot? declCmds d with
@@ -918,6 +923,8 @@ def proofDeps (sheet submission : Environment) (declCmds : Std.HashMap Name Synt
     for d in v.getUsedConstants do
       if seen.contains d then continue
       seen := seen.insert d
+      -- A shared matcher is not a use of the declaration it is named after; see `helperDeps`.
+      if Lean.Meta.isMatcherCore submission d then continue
       if (submission.getModuleIdxFor? d).isSome then
         if let some (.thmInfo _) := submission.find? d then
           if !d.isInternal then library := library.push d

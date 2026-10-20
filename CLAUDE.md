@@ -67,6 +67,8 @@ Comparator's tag in `autograder/lakefile.lean`), runs `lake update`, compiles
   - Submission constants are mapped to their declaration by `declRoot?`.
   - Unchanged problem set declarations (`matchesStencil`) and other exercises are skipped.
   - Untraceable ones are refused.
+  - Matchers (`foo.match_1`) are skipped: Lean shares one between declarations with the
+    same pattern, so `intro ⟨a, b⟩` in one problem can use another problem's matcher.
 - **Theorems:** `proofDeps` collects imported theorems in the term (the "receipt").
   - `identsIn` collects the names written in the exercise and the student's own
     helpers.
