@@ -449,7 +449,7 @@ def classifyComparatorFailure (log : String) : ComparatorFailureReason :=
 def proofFailureMessage : ComparatorFailureReason → String
   | .timedOut => "Verifying this proof took too long and was stopped.\nThis is usually a "
       ++ "problem with the autograder rather than your proof; please notify your instructor."
-  | .usesSorry => "Your proof is missing or incomplete (it appears to use `sorry`)."
+  | .usesSorry => "Your proof, or something it relies on, is unfinished: it still contains `sorry`."
   | .illegalAxiom ax =>
     s!"Your proof relies on the axiom `{ax}`, which isn't permitted for this exercise."
   | .wrongStatement => "Your proof does not prove the expected statement for this exercise."
@@ -859,6 +859,18 @@ def helperViolationMessage (helper : Name) (bad allowed : Array String) : String
     ++ (if bad.size == 1 then "that is" else "those are")
     ++ " not permitted here.\nAnything your proof depends on must use only this exercise's "
     ++ s!"permitted tactics: {list allowed}."
+
+/-- Whether the tactics a list refused include a placeholder for a missing proof. A
+student who left `sorry` in has not finished, which is different from breaking the rules,
+and is told so. -/
+def leftUnfinished (bad : Array String) : Bool := bad.contains "sorry" || bad.contains "admit"
+
+def unfinishedMessage : String :=
+  "This problem is unfinished: your proof still contains `sorry`."
+
+def helperUnfinishedMessage (helper : Name) : String :=
+  s!"Your proof relies on `{helper}`, a lemma in your file that is unfinished: it still "
+    ++ "contains `sorry`."
 
 /-- Student-facing explanation of a tactic violation. It names both what was used and
 what was permitted, so the student can correct the proof rather than guess. -/
@@ -1417,7 +1429,8 @@ def gradeSubmission (sheet submission : Environment)
                     ++ "directly is not accepted here.")
                 else
                   let bad := disallowedTactics kinds allowed cmd
-                  if !bad.isEmpty then some (tacticViolationMessage bad allowed)
+                  if leftUnfinished bad then some unfinishedMessage
+                  else if !bad.isEmpty then some (tacticViolationMessage bad allowed)
                   else
                     -- The graded proof itself is clean; now everything of the student's
                     -- it leans on. See `helperDeps`.
@@ -1436,6 +1449,7 @@ def gradeSubmission (sheet submission : Environment)
                         else
                           let hbad := disallowedTactics kinds allowed hcmd
                           if hbad.isEmpty then none
+                          else if leftUnfinished hbad then some (helperUnfinishedMessage h)
                           else some (helperViolationMessage h hbad allowed)
           let verdict := extensionVerdict name <|> brokenVerdict name <|> tacticVerdict
             <|> theoremVerdict sheet submission declCmds name
