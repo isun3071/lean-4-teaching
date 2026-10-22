@@ -41,6 +41,10 @@ theorem problem_2 (a b c d : ℝ) : a < b → c < d → a + c < b + d := by
   problem 5 rules out problems 1 and 2. Omitting it allows all of them; `#[]` allows none.
   Lemmas the student writes are still fine, but they are held to the same list. Any use
   counts, including one `simp` makes of a lemma you tagged `@[simp]`.
+  An earlier problem may be used even if the student left it unproven, as on paper: the
+  later problem is graded taking it as given. So if a later problem is close to a
+  corollary of an earlier one and should be proved on its own, leave the earlier one off
+  its `allowedLemmas`.
 * On any problem with `allowedTactics` or `allowedTheorems`, a submission that defines its
   own `notation`, `macro`, `macro_rules`, `syntax`, `elab` or `attribute` is refused: those let a proof
   show a permitted name while something else does the work. The refusal covers every

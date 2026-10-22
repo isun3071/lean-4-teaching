@@ -1233,6 +1233,95 @@ def withInfoEntries (results : Json) (info : Array Json) : Json :=
   | .ok (.arr tests) => results.setObjVal! "tests" (.arr (tests ++ info))
   | _ => results
 
+/-! ### Earlier problems as given
+
+A problem may build on earlier ones, as `neg_le_abs_self` builds on `le_abs_self_reproved`.
+Comparator checks every axiom beneath a proof, so an earlier problem left as `sorry` used
+to fail each problem built on it too, though their proofs were right. Paper grading lets a
+student use part (a) without having proved it, and so does this: when a problem fails
+Comparator because of a `sorry` or an axiom beneath it, and it uses theorems of the problem
+set, it is checked once more with those theorems taken as given. Their proofs are replaced
+by an axiom stating that any proposition holds, permitted for that check only.
+
+What can be given is narrow. A theorem is given only if its statement is the problem
+set's (`proofDeps` records no other) and every definition that statement relies on is the
+problem set's too (`trustedStatement`): otherwise a student could keep the statement's
+text, redefine what it means, and make the given false. The problem itself is still
+checked against the problem set's statement, and a `sorry` in its own proof or in a lemma
+of the student's still fails it. The axiom's name is drawn at random for each run, so no
+submission can refer to it, and a passing check never depends on a problem being given
+that `allowedLemmas` forbids, since that list is checked first. -/
+
+/-- Whether every declaration of the submission's own that `n`'s statement relies on,
+directly or through other definitions, is unchanged from the problem set. -/
+def trustedStatement (sheet submission : Environment) (n : Name) : Bool := Id.run do
+  let some ci := submission.find? n | return false
+  let mut seen : NameSet := {}
+  let mut todo := ci.type.getUsedConstants
+  while !todo.isEmpty do
+    let c := todo.back!
+    todo := todo.pop
+    if seen.contains c then continue
+    seen := seen.insert c
+    if (submission.getModuleIdxFor? c).isSome then continue
+    if Lean.Meta.isMatcherCore submission c then continue
+    if !matchesStencil sheet submission c then return false
+    let some d := submission.find? c | return false
+    todo := todo ++ d.type.getUsedConstants
+    if let some v := constValue? d then
+      if !(d matches .thmInfo _) then todo := todo ++ v.getUsedConstants
+  return true
+
+def comparatorGivenChallengeModule := s!"{comparatorLibDirName}.GivenChallenge"
+def comparatorGivenSolutionModule := s!"{comparatorLibDirName}.GivenSolution"
+
+/-- `contents` with axiom `ax` (any proposition holds) declared before its first command,
+and the proof of each declaration in `givens` replaced by it. Statements are untouched. -/
+def withGivens (env : Environment) (contents fileName ax : String) (givens : Array Name) :
+    IO String := do
+  let cmds ← parseCommandsOnly env contents fileName
+  let located := cmds.filterMap fun c => c.getPos?.map (c, ·.byteIdx)
+  let some first := located[0]? | return contents
+  let endOf (i : Nat) : Nat :=
+    if h : i + 1 < located.size then located[i + 1].2 else contents.utf8ByteSize
+  let part (a b : Nat) := String.Pos.Raw.extract contents ⟨a⟩ ⟨b⟩
+  let mut out := part 0 first.2 ++ s!"axiom {ax} \{p : Prop} : p\n\n"
+  let mut cursor := first.2
+  for i in [0:located.size] do
+    let (cmd, _) := located[i]!
+    let some n := declNameOf? cmd | continue
+    unless givens.contains n do continue
+    let some v := (declValOf? cmd).bind (·.getPos?) | continue
+    out := out ++ part cursor v.byteIdx ++ s!":= {ax}\n\n"
+    cursor := endOf i
+  return out ++ part cursor contents.utf8ByteSize
+
+/-- Checks `name` again with the problem-set theorems in `givens` taken as given: see
+above. `sheetContents` is the problem set and `solution` the cleaned submission. -/
+def verifyWithGivens (name : Name) (pts : Float) (sheet : Environment) (givens : Array Name)
+    (sheetContents solution : String) : IO ExerciseResultDebug := do
+  let ax := s!"Given_{← IO.rand 100000000 999999999}"
+  IO.FS.createDirAll comparatorLibDir
+  IO.FS.writeFile (comparatorLibDir / "GivenChallenge.lean")
+    (← withGivens sheet sheetContents "GivenChallenge.lean" ax #[])
+  IO.FS.writeFile (comparatorLibDir / "GivenSolution.lean")
+    (← withGivens sheet solution "GivenSolution.lean" ax givens)
+  let (ok, log) ← runComparator {
+    challenge_module := comparatorGivenChallengeModule
+    solution_module := comparatorGivenSolutionModule
+    theorem_names := #[name.toString]
+    permitted_axioms := ((permittedAxiomsFor sheet name).map Name.toString).push ax }
+  let givenList := String.intercalate ", " (givens.toList.map toString)
+  if ok then
+    return { name, score := pts, status := "passed", output := "Passed all tests",
+             sheet_name := name, expected_status := "none",
+             output_log := s!"Verified by Comparator, taking as given: {givenList}\n{log}" }
+  else
+    return { name, score := 0.0, status := "failed",
+             output := proofFailureMessage (classifyComparatorFailure log),
+             sheet_name := name, expected_status := "none",
+             output_log := s!"Comparator rejected the proof even taking as given: {givenList}\n{log}" }
+
 /-- Grades every exercise. Returns the results in stencil order; the entries to follow
 them, each `@[gradedByHand]` problem as the student wrote it; and the proof summary, one
 audit line per exercise, which goes to the output hidden from students rather than into
@@ -1388,7 +1477,19 @@ def gradeSubmission (sheet submission : Environment)
   let mut results := immediateResults
   for (name, pts) in proofExercises do
     let t0 ← IO.monoMsNow
-    let r ← verifyProofViaComparator name name pts sheet
+    let mut r ← verifyProofViaComparator name name pts sheet
+    -- A `sorry` or an axiom beneath the proof may be an earlier problem the student did
+    -- not finish: check once more with such problems taken as given. A failing retry
+    -- keeps the first message. See `verifyWithGivens`.
+    if r.status == "failed" then
+      let underneath := match classifyComparatorFailure r.output_log with
+        | .usesSorry | .illegalAxiom _ => true
+        | _ => false
+      let givens := (proofDeps sheet submission declCmds name).sheet.filter
+        (trustedStatement sheet submission ·)
+      if underneath && !givens.isEmpty then
+        let r' ← verifyWithGivens name pts sheet givens sheetContents cleaned.contents
+        if r'.status == "passed" then r := r'
     let t1 ← IO.monoMsNow
     phase s!"timing proof {name}: {t1 - t0} ms"
     results := results.push r.toExerciseResult

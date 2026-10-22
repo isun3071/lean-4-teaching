@@ -13,7 +13,8 @@ set the "sheet", and some names (`matchesStencil`) say "stencil".
 ```
 ProblemSets/        problem sets; make_autograder.sh only accepts problem sets here
 examples/           sample submissions against ProblemSets/Template.lean, `-- expect: N/M` first lines;
-                    examples/courselib/ and examples/discrete/ against TemplateCourseLib and DiscreteMath
+                    examples/courselib/, examples/discrete/ and examples/givens/ against
+                    TemplateCourseLib, DiscreteMath and Givens
 CourseLib.lean, CourseLib/  library for problem sets without Mathlib: Shims.lean + Extras.lean
 autograder/         grading engine, derived from robertylewis/lean4-autograder-main
   Main.lean         the grader (~1600 lines)
@@ -80,6 +81,14 @@ Comparator's tag in `autograder/lakefile.lean`), runs `lake update`, compiles
   among them. `lemmaVerdict` compares by exact name and fails closed on untraceable
   helpers, since `proofDeps` skips those silently. Term-based, so `extensionVerdict`
   does not cover it.
+- **Earlier problems as given** (`verifyWithGivens`): when Comparator fails a problem
+  for a `sorry` or axiom beneath it, and the proof uses problem-set theorems, it is rerun
+  with those theorems' proofs replaced by an axiom with a random per-run name, permitted
+  for that run only (`GivenChallenge`/`GivenSolution` modules). A theorem is given only
+  if its statement and every definition that statement relies on are unchanged from the
+  problem set (`trustedStatement`); without that, redefining a definition makes a given
+  false and proves anything (`examples/givens/poisoned.lean`). A
+  failing rerun keeps the first message.
 
 **Files with errors** (`cleanSubmission`). Comparator rebuilds from source, and any
 error fails the rebuild, so it gets a cleaned copy instead:

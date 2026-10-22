@@ -24,6 +24,7 @@ lake update && lake build && lake build autograder
 ./run_suite.sh ProblemSets/Template.lean examples/*.lean
 ./run_suite.sh ProblemSets/TemplateCourseLib.lean examples/courselib/*.lean
 ./run_suite.sh ProblemSets/DiscreteMath.lean examples/discrete/*.lean
+./run_suite.sh ProblemSets/Givens.lean examples/givens/*.lean
 ```
 
 This grades the sample submissions in `examples/` and validates each score

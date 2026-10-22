@@ -45,5 +45,8 @@ jobs:
       - name: Grade the discrete mathematics examples
         run: ./run_suite.sh ProblemSets/DiscreteMath.lean examples/discrete/*.lean
 
+      - name: Grade the earlier-problems-as-given examples
+        run: ./run_suite.sh ProblemSets/Givens.lean examples/givens/*.lean
+
       - name: Grade the CourseLib examples
         run: ./run_suite.sh ProblemSets/TemplateCourseLib.lean examples/courselib/*.lean
