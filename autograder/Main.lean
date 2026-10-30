@@ -1747,9 +1747,10 @@ unsafe def main (args : List String) : IO Unit := do
 
   if sheetMsgs.hasErrors then
     exitWithError (instructorInfo := (← getErrorsStr sheetMsgs)) <|
-      "There was an error processing the assignment template's imports. This "
-        ++ "error is unexpected. Please notify your instructor and provide a "
-        ++ "link to your submission."
+      "We're sorry, but it appears there was an unexpected error processing the assignment's "
+        ++ "imports.\nPlease contact your instructor about this issue.\n(If you are the "
+        ++ "instructor, this usually indicates a version discrepancy where the problem set "
+        ++ "imports a module that the autograder's Lean version lacks, or a typo in the imports.)"
 
   let sheetCmdState : Command.State := Command.mkState sheetHeadEnv sheetMsgs {}
   phase "elaborating problem set"
