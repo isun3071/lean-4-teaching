@@ -172,21 +172,21 @@ if len(log) > 40000:
 # 124 is `timeout` reporting that it killed the command; 137 is SIGKILL, usually the
 # kernel's OOM killer (or `timeout --kill-after` escalating).
 if status == "124":
-    why = ("The autograder hit its time limit and was stopped. The phase markers in the "
-           "output below show how far it got: the last '[phase]' line names the step "
-           "that was still running.")
+    why = ("The autograder timed out.\n"
+           "Check the \"phase\" markers in the output to see how far it got.")
 elif status == "137":
-    why = ("The autograder was killed. That is usually the kernel's out-of-memory "
-           "killer, though it is also how a timed-out run ends if it ignores being "
-           "asked to stop. Check the container's memory limit and the output below.")
+    why = ("The autograder ran out of memory and was killed.\n"
+           "If you are the instructor, check the container's memory limit and the output below.\n"
+           "For best results, please configure the container to the highest possible setting "
+           "(6GB RAM, 4 CPUs).")
 else:
     why = ("The autograder exited with status " + status + " without reporting results.")
 
 json.dump({
     "score": 0.0,
-    "output": ("The autograder failed to produce results, so this submission could not "
-               "be graded. This is a problem with the autograder, not with your "
-               "submission -- please notify your instructor.\n\n" + why +
+    "output": ("We're sorry, but it appears that the autograder malfunctioned, so you "
+               "didn't get a grade.\nThis is a problem with the autograder and not with your "
+               "submission.\nPlease contact your instructor about this issue.\n\n" + why +
                "\n\n--- autograder output ---\n" + log),
     "output_format": "text",
 }, open(os.environ["OUT"], "w"))
