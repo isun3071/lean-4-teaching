@@ -216,3 +216,46 @@ initialize allowedLemmasAttr : ParametricAttribute (Array String) ←
         | _ => throwError "Invalid allowedLemmas attribute"
     afterSet := λ _ _ => do pure ()
   }
+
+/-! ## Requiring a method
+
+`@[requiredTactics #["induction"]]` names tactics a proof must use, and
+`@[requiredTheorems #["sq_nonneg"]]` theorems it must cite, so an exercise can insist on a
+method -- induction, contradiction -- while everything its other lists allow may still be
+used alongside. A use in a lemma of the student's own that the proof relies on counts. This
+checks that the tactic or theorem is there, not that it does the work: a proof can open
+with `by_contra` and then argue directly. A required theorem is cited as in
+`allowedTheorems`: used by the proof and named by the student. -/
+syntax:50 (name := required_tactics) "requiredTactics" "#[" sepBy(str, ",") "]" : attr
+
+initialize requiredTacticsAttr : ParametricAttribute (Array String) ←
+  registerParametricAttribute {
+    name := `required_tactics
+    descr := "Specifies tactics a student's proof must use"
+    getParam := λ _ stx => do
+      match stx with
+        | `(attr| requiredTactics #[$tacs,*]) => return tacs.getElems.map (·.getString)
+        | _ => throwError "Invalid requiredTactics attribute"
+    afterSet := λ _ _ => do pure ()
+  }
+
+syntax:50 (name := required_theorems) "requiredTheorems" "#[" sepBy(str, ",") "]" : attr
+
+initialize requiredTheoremsAttr : ParametricAttribute (Array String) ←
+  registerParametricAttribute {
+    name := `required_theorems
+    descr := "Specifies library theorems a student's proof must cite"
+    getParam := λ _ stx => do
+      match stx with
+        | `(attr| requiredTheorems #[$thms,*]) =>
+          let env ← getEnv
+          for s in thms.getElems do
+            let n := s.getString.toName
+            let known := env.contains n ||
+              env.constants.fold (fun found c _ => found || n.isSuffixOf c) false
+            unless known do
+              throwErrorAt s "requiredTheorems: no theorem named `{n}` is in scope"
+          return thms.getElems.map (·.getString)
+        | _ => throwError "Invalid requiredTheorems attribute"
+    afterSet := λ _ _ => do pure ()
+  }

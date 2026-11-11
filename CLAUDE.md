@@ -81,6 +81,12 @@ Comparator's tag in `autograder/lakefile.lean`), runs `lake update`, compiles
   among them. `lemmaVerdict` compares by exact name and fails closed on untraceable
   helpers, since `proofDeps` skips those silently. Term-based, so `extensionVerdict`
   does not cover it.
+- **Required methods** (`requiredVerdict`): `requiredTactics` must each appear among the
+  tactic names of the exercise and its traced helpers; `requiredTheorems` must each be in
+  `proofDeps.cited` (suffix match). Untraceable helpers fail closed. `extensionVerdict` also
+  covers problems with only these attributes, since a macro could fake a tactic name.
+  Presence only: `Nat.rec` in an `exact` is induction without the `induction` tactic, and
+  is refused by `requiredTactics #["induction"]`.
 - **Earlier problems as given** (`verifyWithGivens`): when Comparator fails a problem
   for a `sorry` or axiom beneath it, and the proof uses problem-set theorems, it is rerun
   with those theorems' proofs replaced by an axiom with a random per-run name, permitted

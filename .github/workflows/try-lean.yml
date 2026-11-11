@@ -98,6 +98,10 @@ jobs:
         if: steps.pick.outputs.skip != 'true'
         run: ./run_suite.sh ProblemSets/Givens.lean examples/givens/*.lean
 
+      - name: Grade the required-method examples
+        if: steps.pick.outputs.skip != 'true'
+        run: ./run_suite.sh ProblemSets/Required.lean examples/required/*.lean
+
       - name: Grade the CourseLib examples
         if: steps.pick.outputs.skip != 'true'
         run: ./run_suite.sh ProblemSets/TemplateCourseLib.lean examples/courselib/*.lean

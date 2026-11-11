@@ -1065,6 +1065,34 @@ def lemmaVerdict (sheet submission : Environment) (declCmds : Std.HashMap Name S
         !allowed.any (·.toName == c)
       if bad.isEmpty then none else some (lemmaViolationMessage bad allowed)
 
+/-- Student-facing explanation of a proof missing a method the exercise requires. -/
+def requiredMissingMessage (missing : Array String) : String :=
+  let list := String.intercalate ", " (missing.toList.map (s!"`{·}`"))
+  "We're sorry, but this exercise asks you to use a particular method.\n"
+    ++ s!"It appears your proof doesn't use {list}, which this exercise requires.\n"
+    ++ s!"Please include {list} in your proof; you may use the other allowed tactics and "
+    ++ "theorems alongside " ++ (if missing.size == 1 then "it." else "them.")
+
+/-- `some message` when `@[requiredTactics]` or `@[requiredTheorems]` on `exercise` names a
+tactic the proof does not use or a theorem it does not cite. Lemmas of the student's own
+that the proof relies on count, as they do for the other lists; one that cannot be traced
+fails closed. -/
+def requiredVerdict (sheet submission : Environment) (declCmds : Std.HashMap Name Syntax)
+    (kinds : PersistentHashMap SyntaxNodeKind Unit) (exercise : Name) : Option String :=
+  let tactics := (requiredTacticsAttr.getParam? sheet exercise).getD #[]
+  let theorems := (requiredTheoremsAttr.getParam? sheet exercise).getD #[]
+  if tactics.isEmpty && theorems.isEmpty then none else
+  match declCmds[exercise]?, helperDeps sheet submission declCmds exercise with
+  | none, _ => some (couldNotCheckMessage "list of required tactics and theorems")
+  | _, .error d => some (untraceableMessage d "list of required tactics and theorems")
+  | some cmd, .ok helpers =>
+    let used := (#[cmd] ++ helpers.map (·.2)).foldl
+      (fun acc c => acc ++ tacticNamesIn kinds c) #[]
+    let cited := (proofDeps sheet submission declCmds exercise).cited
+    let missing := tactics.filter (!used.contains ·)
+      ++ theorems.filter fun t => !cited.any (t.toName.isSuffixOf ·)
+    if missing.isEmpty then none else some (requiredMissingMessage missing)
+
 /-! ### Grading a file with errors in it
 
 Comparator rebuilds the submission from source, and any error in the file fails that
@@ -1384,7 +1412,9 @@ def gradeSubmission (sheet submission : Environment)
       (fun e => !sheetExtensions.contains e.2)).map (·.1)
   let extensionVerdict (name : Name) : Option String :=
     if (allowedTacticsAttr.getParam? sheet name).isNone
-        && (allowedTheoremsAttr.getParam? sheet name).isNone then none
+        && (allowedTheoremsAttr.getParam? sheet name).isNone
+        && (requiredTacticsAttr.getParam? sheet name).isNone
+        && (requiredTheoremsAttr.getParam? sheet name).isNone then none
     else extension?.map fun cmd =>
       s!"We're sorry, but it appears that you used `{cmd}` to define new notation or change "
         ++ "a tactic's behavior.\nThis makes it hard for us to determine which tactics or "
@@ -1466,6 +1496,7 @@ def gradeSubmission (sheet submission : Environment)
           let verdict := extensionVerdict name <|> brokenVerdict name <|> tacticVerdict
             <|> theoremVerdict sheet submission declCmds name
             <|> lemmaVerdict sheet submission declCmds name
+            <|> requiredVerdict sheet submission declCmds kinds name
           match verdict with
           | none => proofExercises := proofExercises.push (name, pts)
           | some output =>

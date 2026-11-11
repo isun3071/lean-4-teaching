@@ -45,6 +45,11 @@ theorem problem_2 (a b c d : ℝ) : a < b → c < d → a + c < b + d := by
   later problem is graded taking it as given. So if a later problem is close to a
   corollary of an earlier one and should be proved on its own, leave the earlier one off
   its `allowedLemmas`.
+* `requiredTactics` and `requiredTheorems` make a problem insist on a method:
+  `requiredTactics #["induction"]` refuses a proof that never uses `induction`, while the
+  other lists still say what else may be used alongside it. Use in a lemma of the student's
+  own counts. It checks the tactic is there, not that it does the work: a proof can open
+  with `by_contra` and then argue directly.
 * On any problem with `allowedTactics` or `allowedTheorems`, a submission that defines its
   own `notation`, `macro`, `macro_rules`, `syntax`, `elab` or `attribute` is refused: those let a proof
   show a permitted name while something else does the work. The refusal covers every

@@ -59,6 +59,8 @@ theorem even_add_even (m n : ℤ) : IsEven m → IsEven n → IsEven (m + n) := 
 --                               Leave this out to allow any theorem.
 --   allowedLemmas #[...]        the only problems and provided lemmas from this file the proof
 --                               may use. Leave this out to allow all of them.
+--   requiredTactics #[...]      tactics the proof must use, e.g. #["induction"]; the lists above
+--   requiredTheorems #[...]     still say what else may be used. See ProblemSets/Required.lean.
 
 -- You do not need to write solutions here. The autograder simply checks if the
 -- student solved the exact goals you specified in each problem however they want
