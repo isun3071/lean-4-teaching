@@ -2,10 +2,12 @@
 -- Each problem uses the method it requires; lt_of_not_le' names not_le as not_le.mp.
 import Mathlib.Basic.Real.Basic
 
-theorem no_half : ¬ ∃ n : ℕ, 2 * n = 1 := by
+theorem lt_trans_by_contradiction (a b c : ℝ) (hab : a < b) (hbc : b < c) : a < c := by
   by_contra h
-  obtain ⟨n, hn⟩ := h
-  omega
+  rewrite [not_lt] at h
+  have hba := lt_of_lt_of_le hbc h
+  have haa := lt_trans hab hba
+  exact absurd haa (lt_irrefl a)
 
 theorem sq_sum_nonneg (a b : ℝ) : 0 ≤ a ^ 2 + b ^ 2 := by
   have ha := sq_nonneg a

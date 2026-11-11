@@ -9,11 +9,14 @@ against this set.
 import Mathlib.Basic.Real.Basic
 import AutograderLib
 
--- Must be proved by contradiction; the other tactics may be used alongside `by_contra`.
+-- Must be proved by contradiction, though `exact lt_trans hab hbc` would do it directly.
+-- The goal is not a negation on purpose: for `¬ P`, `intro` is itself proof by
+-- contradiction, and requiring `by_contra` would only require the keyword.
 @[autogradedProof 5,
-  allowedTactics #["intro", "obtain", "by_contra", "omega", "exact"],
+  allowedTactics #["intro", "have", "exact", "by_contra", "rewrite"],
+  allowedTheorems #["lt_trans", "not_lt", "lt_of_lt_of_le", "lt_irrefl", "absurd"],
   requiredTactics #["by_contra"]]
-theorem no_half : ¬ ∃ n : ℕ, 2 * n = 1 := by
+theorem lt_trans_by_contradiction (a b c : ℝ) (hab : a < b) (hbc : b < c) : a < c := by
   sorry
 
 -- Must cite `sq_nonneg`, though any other theorem is allowed.
