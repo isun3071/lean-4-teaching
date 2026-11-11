@@ -22,3 +22,10 @@ theorem no_half : ¬ ∃ n : ℕ, 2 * n = 1 := by
   requiredTheorems #["sq_nonneg"]]
 theorem sq_sum_nonneg (a b : ℝ) : 0 ≤ a ^ 2 + b ^ 2 := by
   sorry
+
+-- Must cite `not_le`. Writing it as `not_le.mp h` counts.
+@[autogradedProof 5,
+  allowedTactics #["exact", "rewrite"],
+  requiredTheorems #["not_le"]]
+theorem lt_of_not_le' (a b : ℝ) (h : ¬ a ≤ b) : b < a := by
+  sorry

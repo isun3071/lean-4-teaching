@@ -914,6 +914,12 @@ def tacticNamesIn (kinds : PersistentHashMap SyntaxNodeKind Unit) (stx : Syntax)
     let n := tacticDisplayName s
     if acc.contains n then acc else acc.push n
 
+/-- The proper prefixes of `n`, longest first: `not_le.mp` gives `not_le`. -/
+partial def properPrefixes (n : Name) : List Name :=
+  match n.getPrefix with
+  | .anonymous => []
+  | p => p :: properPrefixes p
+
 /-- What the proof of an exercise rests on: the student's own declarations (`own`), the
 problem set's theorems it uses (`sheet`: other exercises and provided lemmas), and the
 library theorems it cites (`cited`). -/
@@ -921,6 +927,10 @@ structure ProofDeps where
   own : Array Name
   sheet : Array Name
   cited : Array Name
+  /-- `cited`, plus theorems written as the start of a longer name: `not_le.mp` counts as
+  citing `not_le`. For required theorems only. On an allowlist it would also close the
+  dot-notation gap, which is a policy choice left open (see CLAUDE.md, known gaps). -/
+  citedOrDotted : Array Name
 
 def proofDeps (sheet submission : Environment) (declCmds : Std.HashMap Name Syntax)
     (exercise : Name) : ProofDeps := Id.run do
@@ -959,12 +969,16 @@ def proofDeps (sheet submission : Environment) (declCmds : Std.HashMap Name Synt
   let named (c : Name) : Bool := idents.any fun n =>
     c == n || c.toString.endsWith ("." ++ n.toString)
   let cited := (library.filter named).qsort (·.toString < ·.toString)
-  return { own, sheet := sheetThms, cited }
+  let dotted (c : Name) : Bool := idents.any fun n =>
+    (properPrefixes n).any fun p => c == p || c.toString.endsWith ("." ++ p.toString)
+  let citedOrDotted := (library.filter (fun c => named c || dotted c)).qsort
+    (·.toString < ·.toString)
+  return { own, sheet := sheetThms, cited, citedOrDotted }
 
 /-- One line for the staff-only output describing how `exercise` was proved. -/
 def auditLine (sheet submission : Environment) (declCmds : Std.HashMap Name Syntax)
     (kinds : PersistentHashMap SyntaxNodeKind Unit) (exercise : Name) : String := Id.run do
-  let { own, sheet := sheetThms, cited } := proofDeps sheet submission declCmds exercise
+  let { own, sheet := sheetThms, cited, .. } := proofDeps sheet submission declCmds exercise
   let list (a : Array String) := if a.isEmpty then "none" else String.intercalate ", " a.toList
   let tactics := match declCmds[exercise]? with
     | some c => list (tacticNamesIn kinds c)
@@ -1088,7 +1102,8 @@ def requiredVerdict (sheet submission : Environment) (declCmds : Std.HashMap Nam
   | some cmd, .ok helpers =>
     let used := (#[cmd] ++ helpers.map (·.2)).foldl
       (fun acc c => acc ++ tacticNamesIn kinds c) #[]
-    let cited := (proofDeps sheet submission declCmds exercise).cited
+    -- A required theorem written as `not_le.mp` is still the student naming `not_le`.
+    let cited := (proofDeps sheet submission declCmds exercise).citedOrDotted
     let missing := tactics.filter (!used.contains ·)
       ++ theorems.filter fun t => !cited.any (t.toName.isSuffixOf ·)
     if missing.isEmpty then none else some (requiredMissingMessage missing)
