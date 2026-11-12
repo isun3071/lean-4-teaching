@@ -44,8 +44,10 @@ Comparator's tag in `autograder/lakefile.lean`), runs `lake update`, compiles
    1. Elaborates the problem set, then the submission, in-process.
    2. A failed header with imports differing from the problem set's (`sameImports`) tells
       the student which imports to restore.
-   3. Per graded exercise, `gradeSubmission` runs `extensionVerdict <|> brokenVerdict <|>
-      tacticVerdict <|> theoremVerdict <|> lemmaVerdict`; the first failure is final.
+   3. Per graded exercise, `gradeSubmission` runs `extensionVerdict <|> brokenVerdict`,
+      either of which is final. Otherwise the tactic, theorem, lemma and required checks
+      all run, and `combineFindings` reports every violation in one message. A finding
+      that can't be combined (unparseable, untraceable, `sorry`) is shown alone.
    4. Survivors go to Comparator, one invocation per exercise.
    5. Results are sorted into problem set order, and `@[gradedByHand]` entries are appended.
 

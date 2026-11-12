@@ -886,6 +886,34 @@ def helperDeps (sheet submission : Environment) (declCmds : Std.HashMap Name Syn
         todo := todo.push d
   return .ok helpers
 
+/-- What one list check (tactics, theorems, earlier problems, required methods) found wrong
+with an exercise's proof. -/
+structure Finding where
+  /-- The message shown when this is the only thing wrong. -/
+  alone : String
+  /-- Its lines in a message reporting several findings together. Empty when it cannot be
+  combined: the check could not see the whole proof, or the proof is unfinished. Such a
+  finding is shown alone, since the other checks' findings would be guesses. -/
+  lines : Array String := #[]
+  deriving Inhabited
+
+/-- Student-facing: several list violations in one exercise, under one apology, so a student
+fixes them all in one round rather than learning of them one resubmission at a time. -/
+def combinedViolationMessage (fs : Array Finding) : String :=
+  "We're sorry, but it seems that your solution doesn't follow a few of our rules for this "
+    ++ "exercise.\n\n"
+    ++ String.intercalate "\n\n" (fs.toList.map (String.intercalate "\n" ·.lines.toList))
+    ++ "\n\nWe set these rules to help you practice what we taught you in class, since some "
+    ++ "tactics and theorems can shortcut to the solution.\nThank you for your cooperation!"
+
+/-- The message for an exercise's list findings, if any: a finding that cannot be combined
+alone, a single violation in its own message, several in one. -/
+def combineFindings (fs : Array Finding) : Option String :=
+  if fs.isEmpty then none
+  else match fs.find? (·.lines.isEmpty) with
+    | some f => some f.alone
+    | none => if fs.size == 1 then some fs[0]!.alone else some (combinedViolationMessage fs)
+
 /-- Student-facing explanation of a tactic violation inside a lemma the proof relies on. -/
 def helperViolationMessage (helper : Name) (bad allowed : Array String) : String :=
   let list (a : Array String) := String.intercalate ", " (a.toList.map (s!"`{·}`"))
@@ -922,6 +950,19 @@ def tacticViolationMessage (bad allowed : Array String) : String :=
     ++ "the solution which isn't what we want.\nTo help you practice using the tactics we "
     ++ "taught you in class, please stick to only using these tactics we allow: "
     ++ s!"{list allowed}.\nThank you for your cooperation!"
+
+/-- A tactic violation, in the exercise (`helper = none`) or in a lemma it relies on, as
+lines of a combined message. -/
+def tacticViolationLines (helper : Option Name) (bad allowed : Array String) : Array String :=
+  let list (a : Array String) := String.intercalate ", " (a.toList.map (s!"`{·}`"))
+  let whereUsed := match helper with
+    | some h => s!" in helper lemma `{h}`"
+    | none => ""
+  #[s!"You used ({list bad}){whereUsed}, which "
+      ++ (if bad.size == 1 then "is a tactic" else "are tactics")
+      ++ " we don't allow for this exercise.",
+    "Please stick to only using these tactics we allow"
+      ++ (if helper.isSome then ", even in helpers" else "") ++ s!": {list allowed}."]
 
 /-! ### Audit line for graders
 
@@ -1069,33 +1110,48 @@ def theoremViolationMessage (bad : Array Name) (allowed : Array String) : String
     ++ (if bad.size == 1 then "is a theorem" else "are theorems")
     ++ " we don't allow for this exercise.\nThis is because some theorems can shortcut to the "
     ++ "solution which isn't what we were looking for.\nTo help you practice using the "
-    ++ "theorems we taught you in class and/or have given you, please stick to only using "
-    ++ s!"these theorems we allow: {list allowed}.\nThank you for your cooperation!"
+    ++ "theorems we taught you in class and/or have given you, "
+    ++ (if allowed.isEmpty then "please don't use any theorems outside of this problem set "
+          ++ "for this exercise."
+        else s!"please stick to only using these theorems we allow: {list allowed}.")
+    ++ "\nThank you for your cooperation!"
+
+/-- A theorem violation as lines of a combined message. -/
+def theoremViolationLines (bad : Array Name) (allowed : Array String) : Array String :=
+  let list (a : Array String) := String.intercalate ", " (a.toList.map (s!"`{·}`"))
+  #[s!"You used ({list (bad.map toString)}), which "
+      ++ (if bad.size == 1 then "is a theorem" else "are theorems")
+      ++ " we don't allow for this exercise.",
+    if allowed.isEmpty then "Please don't use any theorems outside of this problem set for "
+      ++ "this exercise."
+    else s!"Please stick to only using these theorems we allow: {list allowed}."]
 
 /-- `some message` when `@[allowedTheorems]` on `exercise` rules out its proof: the proof
 cites a theorem off the list, or cannot be fully seen, in which case it fails closed as the
 tactic check does. A theorem matches a listed name or a namespaced version of it. -/
 def theoremVerdict (sheet submission : Environment) (declCmds : Std.HashMap Name Syntax)
-    (exercise : Name) : Option String :=
+    (exercise : Name) : Option Finding :=
   match allowedTheoremsAttr.getParam? sheet exercise with
   | none => none
   | some allowed =>
     match declCmds[exercise]?, helperDeps sheet submission declCmds exercise with
     | none, _ =>
-      some (couldNotCheckMessage "theorems we allow")
+      some { alone := couldNotCheckMessage "theorems we allow" }
     | _, .error d =>
-      some (untraceableMessage d "theorems we allow")
+      some { alone := untraceableMessage d "theorems we allow" }
     | some cmd, .ok helpers =>
       if containsMissing cmd || helpers.any (containsMissing ·.2) then
-        some ("We're sorry, but you seemed to use syntax that isn't available for this problem set, "
+        some { alone := "We're sorry, but you seemed to use syntax that isn't available for this problem set, "
           ++ "and thus we couldn't give you credit.\nTo avoid this problem happening in the "
           ++ "future and get full credit, please stick to the notation and theorems you learned and "
           ++ "use them the way we did in class.\nThank you for your understanding and "
-          ++ "cooperation!")
+          ++ "cooperation!" }
       else
         let bad := (proofDeps sheet submission declCmds exercise).cited.filter fun c =>
           !allowed.any (·.toName.isSuffixOf c)
-        if bad.isEmpty then none else some (theoremViolationMessage bad allowed)
+        if bad.isEmpty then none
+        else some { alone := theoremViolationMessage bad allowed,
+                    lines := theoremViolationLines bad allowed }
 
 /-- Student-facing explanation of an `allowedLemmas` violation. -/
 def lemmaViolationMessage (bad : Array Name) (allowed : Array String) : String :=
@@ -1108,23 +1164,32 @@ def lemmaViolationMessage (bad : Array Name) (allowed : Array String) : String :
           ++ s!"only citing {list allowed} in your solution.")
     ++ "\nThank you for your cooperation!"
 
+/-- An `allowedLemmas` violation as lines of a combined message. -/
+def lemmaViolationLines (bad : Array Name) (allowed : Array String) : Array String :=
+  let list (a : Array String) := String.intercalate ", " (a.toList.map (s!"`{·}`"))
+  #[s!"You cited {list (bad.map toString)}, which we don't allow citing in this exercise.",
+    if allowed.isEmpty then "Please avoid citing previous problems in your solution."
+    else s!"Please stick to only citing {list allowed} in your solution."]
+
 /-- `some message` when `@[allowedLemmas]` on `exercise` rules out its proof: the proof uses
 a problem-set theorem off the list, directly or through a lemma of the student's own. A use
 hidden in a declaration that cannot be traced fails closed, as the other checks do. -/
 def lemmaVerdict (sheet submission : Environment) (declCmds : Std.HashMap Name Syntax)
-    (exercise : Name) : Option String :=
+    (exercise : Name) : Option Finding :=
   match allowedLemmasAttr.getParam? sheet exercise with
   | none => none
   | some allowed =>
     match declCmds[exercise]?, helperDeps sheet submission declCmds exercise with
     | none, _ =>
-      some (couldNotCheckMessage "past problems we allow")
+      some { alone := couldNotCheckMessage "past problems we allow" }
     | _, .error d =>
-      some (untraceableMessage d "past problems we allow")
+      some { alone := untraceableMessage d "past problems we allow" }
     | some _, .ok _ =>
       let bad := (proofDeps sheet submission declCmds exercise).sheet.filter fun c =>
         !allowed.any (·.toName == c)
-      if bad.isEmpty then none else some (lemmaViolationMessage bad allowed)
+      if bad.isEmpty then none
+      else some { alone := lemmaViolationMessage bad allowed,
+                  lines := lemmaViolationLines bad allowed }
 
 /-- Student-facing explanation of a proof missing a method the exercise requires. -/
 def requiredMissingMessage (missing : Array String) : String :=
@@ -1135,18 +1200,27 @@ def requiredMissingMessage (missing : Array String) : String :=
     ++ (if one then "this" else "these") ++ " in your proof.\nYou can use other tactics and "
     ++ "theorems we allow as you wish in this exercise.\nThank you for your cooperation!"
 
+/-- Missing required methods as lines of a combined message. -/
+def requiredMissingLines (missing : Array String) : Array String :=
+  let list := String.intercalate ", " (missing.toList.map (s!"`{·}`"))
+  let one := missing.size == 1
+  #[s!"We want you to practice using {list}, and your solution appears to not have "
+      ++ (if one then "it." else "them."),
+    "Please add " ++ (if one then "this" else "these") ++ " in your proof."]
+
 /-- `some message` when `@[requiredTactics]` or `@[requiredTheorems]` on `exercise` names a
 tactic the proof does not use or a theorem it does not cite. Lemmas of the student's own
 that the proof relies on count, as they do for the other lists; one that cannot be traced
 fails closed. -/
 def requiredVerdict (sheet submission : Environment) (declCmds : Std.HashMap Name Syntax)
-    (kinds : PersistentHashMap SyntaxNodeKind Unit) (exercise : Name) : Option String :=
+    (kinds : PersistentHashMap SyntaxNodeKind Unit) (exercise : Name) : Option Finding :=
   let tactics := (requiredTacticsAttr.getParam? sheet exercise).getD #[]
   let theorems := (requiredTheoremsAttr.getParam? sheet exercise).getD #[]
   if tactics.isEmpty && theorems.isEmpty then none else
   match declCmds[exercise]?, helperDeps sheet submission declCmds exercise with
-  | none, _ => some (couldNotCheckMessage "tactics and theorems we want you to use")
-  | _, .error d => some (untraceableMessage d "tactics and theorems we want you to use")
+  | none, _ => some { alone := couldNotCheckMessage "tactics and theorems we want you to use" }
+  | _, .error d =>
+    some { alone := untraceableMessage d "tactics and theorems we want you to use" }
   | some cmd, .ok helpers =>
     let used := (#[cmd] ++ helpers.map (·.2)).foldl
       (fun acc c => acc ++ tacticNamesIn kinds c) #[]
@@ -1154,7 +1228,9 @@ def requiredVerdict (sheet submission : Environment) (declCmds : Std.HashMap Nam
     let cited := (proofDeps sheet submission declCmds exercise).citedOrDotted
     let missing := tactics.filter (!used.contains ·)
       ++ theorems.filter fun t => !cited.any (t.toName.isSuffixOf ·)
-    if missing.isEmpty then none else some (requiredMissingMessage missing)
+    if missing.isEmpty then none
+    else some { alone := requiredMissingMessage missing,
+                lines := requiredMissingLines missing }
 
 /-! ### Grading a file with errors in it
 
@@ -1529,7 +1605,7 @@ def gradeSubmission (sheet submission : Environment)
           -- A tactic violation fails the exercise outright, before Comparator is
           -- consulted: the proof may well be valid, but it is not the proof this
           -- exercise asked for, so there is nothing for verification to settle.
-          let tacticVerdict : Option String :=
+          let tacticVerdict : Option Finding :=
             match allowedTacticsAttr.getParam? sheet name with
             | none => none
             | some allowed =>
@@ -1539,45 +1615,51 @@ def gradeSubmission (sheet submission : Environment)
               | none =>
                 -- Elaboration found the declaration but our parse did not, so we have
                 -- nothing to inspect.
-                some (couldNotCheckMessage "tactics we allow")
+                some { alone := couldNotCheckMessage "tactics we allow" }
               | some cmd =>
                 if containsMissing cmd then
-                  some ("We're sorry, but you seemed to use syntax that isn't available for this problem set, "
+                  some { alone := "We're sorry, but you seemed to use syntax that isn't available for this problem set, "
                     ++ "and thus we couldn't give you credit.\nTo avoid this problem happening in the "
                     ++ "future and get full credit, please stick to the tactics you learned and use them "
                     ++ "the way we did in class.\nThank you for your understanding and "
-                    ++ "cooperation!")
+                    ++ "cooperation!" }
                 else if !containsByBlock cmd then
-                  some ("Unfortunately, we don't accept solutions like this.\nPlease only use "
+                  some { alone := "Unfortunately, we don't accept solutions like this.\nPlease only use "
                     ++ "tactic proofs (e.g. `:= by ...`) with the tactics we allow.\nIt's the "
                     ++ "typical way we prove theorems in this class.\nThank you for your "
-                    ++ "cooperation!")
+                    ++ "cooperation!" }
                 else
                   let bad := disallowedTactics kinds allowed cmd
-                  if leftUnfinished bad then some unfinishedMessage
-                  else if !bad.isEmpty then some (tacticViolationMessage bad allowed)
+                  if leftUnfinished bad then some { alone := unfinishedMessage }
+                  else if !bad.isEmpty then
+                    some { alone := tacticViolationMessage bad allowed,
+                           lines := tacticViolationLines none bad allowed }
                   else
                     -- The graded proof itself is clean; now everything of the student's
                     -- it leans on. See `helperDeps`.
                     match helperDeps sheet submission declCmds name with
                     | .error d =>
-                      some (untraceableMessage d "tactics we allow")
+                      some { alone := untraceableMessage d "tactics we allow" }
                     | .ok helpers =>
                       helpers.findSome? fun (h, hcmd) =>
                         if containsMissing hcmd then
-                          some ("We're sorry, but you seemed to use syntax that isn't available for this problem set, "
+                          some { alone := "We're sorry, but you seemed to use syntax that isn't available for this problem set, "
                             ++ "and thus we couldn't give you credit.\nTo avoid this problem happening in the "
                             ++ "future and get full credit, please avoid defining your own tactics.\n"
-                            ++ "Thank you for your understanding and cooperation!")
+                            ++ "Thank you for your understanding and cooperation!" }
                         else
                           let hbad := disallowedTactics kinds allowed hcmd
                           if hbad.isEmpty then none
-                          else if leftUnfinished hbad then some (helperUnfinishedMessage h)
-                          else some (helperViolationMessage h hbad allowed)
-          let verdict := extensionVerdict name <|> brokenVerdict name <|> tacticVerdict
-            <|> theoremVerdict sheet submission declCmds name
-            <|> lemmaVerdict sheet submission declCmds name
-            <|> requiredVerdict sheet submission declCmds kinds name
+                          else if leftUnfinished hbad then some { alone := helperUnfinishedMessage h }
+                          else some { alone := helperViolationMessage h hbad allowed,
+                                      lines := tacticViolationLines (some h) hbad allowed }
+          -- Macros and compile errors stop here, as they make the lists meaningless.
+          -- The list checks are independent, so every violation is reported at once.
+          let verdict := extensionVerdict name <|> brokenVerdict name
+            <|> combineFindings (#[tacticVerdict,
+                  theoremVerdict sheet submission declCmds name,
+                  lemmaVerdict sheet submission declCmds name,
+                  requiredVerdict sheet submission declCmds kinds name].filterMap id)
           match verdict with
           | none => proofExercises := proofExercises.push (name, pts)
           | some output =>
