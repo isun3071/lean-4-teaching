@@ -184,9 +184,12 @@ else:
 
 json.dump({
     "score": 0.0,
-    "output": ("We're sorry, but it appears that the autograder malfunctioned, so you "
-               "didn't get a grade.\nThis is a problem with the autograder and not with your "
-               "submission.\nPlease contact your instructor about this issue.\n\n" + why +
+    "output": ("We're sorry, but it appears that this autograder malfunctioned.\n"
+               "Please rest assured that this was most likely not a problem with your "
+               "submission.\nErrors:\n" + why +
+               "\n\nWe advise you to contact the instructor about this problem with a link to "
+               "this submission to help them troubleshoot.\nThank you for your patience while "
+               "we get this sorted out!" +
                "\n\n--- autograder output ---\n" + log),
     "output_format": "text",
 }, open(os.environ["OUT"], "w"))

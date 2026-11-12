@@ -447,31 +447,53 @@ def classifyComparatorFailure (log : String) : ComparatorFailureReason :=
     .unknown
 
 def proofFailureMessage : ComparatorFailureReason → String
-  | .timedOut => "Unfortunately, it took too long to grade this exercise.\nThis is probably an "
-      ++ "autograder issue; please contact your instructor about it."
-  | .usesSorry => "Unfortunately, your proof or something it cites is unfinished, as it still "
-      ++ "contains `sorry`."
+  | .timedOut => "We're sorry, but it took too long to grade this exercise.\nThis might be on "
+      ++ "our end.\nContact the instructor for help debugging this issue (with a link to this "
+      ++ "submission).\nWe'd greatly appreciate your cooperation!"
+  | .usesSorry => "It seems that your proof or something it cites has `sorry`.\nDid you finish "
+      ++ "them by any chance?\nIf not, please try, and if so, no need to be `sorry` about it "
+      ++ "(you can remove the `sorry`).\nWe'd appreciate the effort!"
   | .illegalAxiom ax =>
-    s!"Unfortunately, your proof uses the axiom `{ax}` which isn't allowed for this exercise."
-  | .wrongStatement =>
-    "Unfortunately, your proof does not prove the expected statement for this exercise."
-  | .kernelRejected => "Unfortunately, something went wrong with grading this proof (Lean "
-      ++ "kernel rejection).\nContact your instructor for help resolving this issue."
-  | .buildFailed => "Unfortunately, something went wrong with compiling your submission.\n"
-      ++ "Did your file compile correctly?\nIf not, please make sure it does."
-  | .unknown => "Unfortunately, something went wrong with grading this proof (Comparator "
-      ++ "proof checking issues).\nContact your instructor for help resolving this issue."
+    -- `native_decide` records its trust as an axiom named after it; say so in its own terms.
+    if (ax.splitOn "native_decide").length > 1 then
+      "Unfortunately, we don't allow `native_decide` here.\n`native_decide` asks our "
+        ++ "autograder to enumerate the cases we gave you directly, sometimes in a "
+        ++ "trial-and-error fashion, which defeats the purpose of this exercise.\nTry proving "
+        ++ "this statement instead using what we learned in class so you know why it works, "
+        ++ "not just that it does.\nWe'd appreciate the effort!"
+    else
+      s!"Unfortunately, we don't allow using the axiom `{ax}`.\nAxioms like this allow you to "
+        ++ "\"prove\" anything, even false statements.\nTry proving this exercise without it.\n"
+        ++ "We'd appreciate the effort!"
+  | .wrongStatement => "Unfortunately, this isn't the theorem we're looking for.\nDid you happen "
+      ++ "to change it by any chance?\nIf so, prove our statement instead!\nWe'd appreciate the "
+      ++ "effort."
+  | .kernelRejected => "We're sorry, but something went wrong while we tried to grade this "
+      ++ "proof (Lean kernel rejection).\nPlease contact the instructor about this issue and "
+      ++ "provide them with a link to this submission.\nThank you for your cooperation!"
+  | .buildFailed => "We're sorry, but something went wrong while we tried to compile your "
+      ++ "submission.\nDid your file compile on your end?\nIf not, please make sure it does, or "
+      ++ "contact the instructor if you know for sure it works on your machine or the "
+      ++ "live.lean-lang.org editor.\nThank you for your cooperation!"
+  | .unknown => "We're sorry, but something went wrong while we tried to grade this proof "
+      ++ "(Comparator proof checking issues).\nPlease contact the instructor about this issue "
+      ++ "and provide them with a link to this submission.\nThank you for your cooperation!"
 
 def defFailureMessage : ComparatorFailureReason → String
   | .timedOut => proofFailureMessage .timedOut
-  | .usesSorry => "Unfortunately, we cannot prove that your definition is equivalent to the "
-      ++ "reference solution.\n(If your instructor releases solutions, try proving the "
-      ++ "equivalence yourself and see if there are any issues.)"
+  | .usesSorry => "We're sorry, but we're having trouble checking that your definition and the "
+      ++ "one we're looking for are equivalent.\nIf we release solutions, try proving the "
+      ++ "equivalence yourself and see if you run into issues, or you can contact the "
+      ++ "instructor for help.\nWe appreciate your effort!"
   | .illegalAxiom ax =>
-    s!"Unfortunately, for us to check that your definition is equivalent to the reference "
-      ++ s!"solution's, we needed the axiom `{ax}` which isn't allowed for this exercise."
-  | .wrongStatement =>
-    "Unfortunately, your definition's type does not match what we expect for this exercise."
+    s!"We're sorry, but while we were checking that your definition is equivalent to ours, we "
+      ++ s!"needed to use the axiom `{ax}` that we don't allow.\nIf we release solutions, try "
+      ++ "proving the equivalence yourself without that axiom and see if you run into issues, "
+      ++ "or you can contact the instructor for help.\nWe appreciate your effort!"
+  | .wrongStatement => "We're sorry, but your definition's type does not match what we're "
+      ++ "looking for.\nThis might happen when your input (domain) and/or output (codomain) "
+      ++ "changed.\nTo get credit, please change it back and try defining it with the proper "
+      ++ "inputs and outputs.\nThank you for your cooperation!"
   | .kernelRejected => proofFailureMessage .kernelRejected
   | .buildFailed => proofFailureMessage .buildFailed
   | .unknown => proofFailureMessage .unknown
@@ -492,7 +514,7 @@ def verifyProofViaComparator (name subName : Name) (pts : Float)
   let (ok, log) ← runComparator cfg
   if ok then
     return { name := subName, score := pts, status := "passed",
-             output := "Your solution is correct!", sheet_name := name,
+             output := "Your solution is correct!\nGood job! :)", sheet_name := name,
              expected_status := "none",
              output_log := s!"Verified by Comparator\n{log}" }
   else
@@ -517,7 +539,7 @@ def verifyDefViaComparator (i : Nat) (t : PinTarget) (pts : Float)
   let (ok, log) ← runComparator cfg
   if ok then
     return { name := t.subName, score := pts, status := "passed",
-             output := "Your solution is correct!", sheet_name := t.refName,
+             output := "Your solution is correct!\nGood job! :)", sheet_name := t.refName,
              expected_status := "none",
              output_log := s!"Verified equal to reference by Comparator\n{log}" }
   else
@@ -573,8 +595,11 @@ def defQuickCheck (subName name : Name) (subConstInfo : ConstantInfo) :
     Option ExerciseResultDebug :=
   if !subConstInfo.hasValue then
     some { name := subName, score := 0.0, status := "failed",
-           output := "Unfortunately, this definition declaration does not appear to contain "
-             ++ "anything or is missing.\nPlease add it back and try to complete the definition.",
+           output := "We're sorry, but we're having trouble finding your definition statement, "
+             ++ "or it turned up empty.\nDid you happen to forget the `:=` part, for example?\n"
+             ++ "If so, please add it back and try to complete the definition, or you can "
+             ++ "contact the instructor if you still run into issues.\nWe appreciate your "
+             ++ "cooperation!",
            sheet_name := name, expected_status := "none",
            output_log := "Declaration does not contain a value" }
   else none
@@ -864,11 +889,12 @@ def helperDeps (sheet submission : Environment) (declCmds : Std.HashMap Name Syn
 /-- Student-facing explanation of a tactic violation inside a lemma the proof relies on. -/
 def helperViolationMessage (helper : Name) (bad allowed : Array String) : String :=
   let list (a : Array String) := String.intercalate ", " (a.toList.map (s!"`{·}`"))
-  "We're sorry, but it appears you used some tactics that are not allowed for this exercise.\n"
-    ++ s!"You cited `{helper}` (a helper lemma you wrote), which unfortunately uses "
-    ++ s!"{list bad}.\n" ++ (if bad.size == 1 then "That isn't" else "Those aren't")
-    ++ " allowed here.\nPlease stick to only these allowed tactics for this exercise, even for "
-    ++ s!"helpers: {list allowed}."
+  s!"We're sorry, but it seems that you used ({list bad}) in helper lemma `{helper}`, which "
+    ++ (if bad.size == 1 then "is a tactic" else "are tactics")
+    ++ " that we don't allow for this exercise.\nThis is because some tactics can shortcut to "
+    ++ "the solution which isn't what we want.\nTo help you practice using the tactics we "
+    ++ "taught you in class, please stick to only using these tactics we allow, even in "
+    ++ s!"helpers: {list allowed}.\nThank you for your cooperation!"
 
 /-- Whether the tactics a list refused include a placeholder for a missing proof. A
 student who left `sorry` in has not finished, which is different from breaking the rules,
@@ -876,20 +902,26 @@ and is told so. -/
 def leftUnfinished (bad : Array String) : Bool := bad.contains "sorry" || bad.contains "admit"
 
 def unfinishedMessage : String :=
-  "This exercise appears to be unfinished as your proof still contains `sorry`."
+  "It seems that your proof has `sorry`.\nDid you finish it by any chance?\nIf not, please try, "
+    ++ "and if so, no need to be `sorry` about it (you can remove the `sorry`).\nWe'd "
+    ++ "appreciate the effort!"
 
 def helperUnfinishedMessage (helper : Name) : String :=
-  s!"Your proof cites `{helper}`, an unfinished helper lemma in your file (it contains sorry).\n"
-    ++ "Please finish your helper lemma or try proving this exercise without it."
+  s!"It seems that you're citing a helper lemma `{helper}` that you didn't finish (it has "
+    ++ "`sorry`).\nDid you finish it by any chance?\nIf not, please try, or prove this exercise "
+    ++ "without it.\nIf so, no need to be `sorry` about it (you can remove the `sorry`).\nWe'd "
+    ++ "greatly appreciate the effort!"
 
 /-- Student-facing explanation of a tactic violation. It names both what was used and
 what was permitted, so the student can correct the proof rather than guess. -/
 def tacticViolationMessage (bad allowed : Array String) : String :=
   let list (a : Array String) := String.intercalate ", " (a.toList.map (s!"`{·}`"))
-  "We're sorry, but it appears you used some tactics that are not allowed for this exercise.\n"
-    ++ s!"You used {list bad}, which " ++ (if bad.size == 1 then "isn't" else "aren't")
-    ++ " permitted here.\nPlease stick to only these allowed tactics for this exercise: "
-    ++ s!"{list allowed}."
+  s!"We're sorry, but it seems that you used ({list bad}), which "
+    ++ (if bad.size == 1 then "is a tactic" else "are tactics")
+    ++ " that we don't allow for this exercise.\nThis is because some tactics can shortcut to "
+    ++ "the solution which isn't what we want.\nTo help you practice using the tactics we "
+    ++ "taught you in class, please stick to only using these tactics we allow: "
+    ++ s!"{list allowed}.\nThank you for your cooperation!"
 
 /-! ### Audit line for graders
 
@@ -1007,32 +1039,38 @@ def auditLine (sheet submission : Environment) (declCmds : Std.HashMap Name Synt
 
 /-- Student-facing: a graded exercise the submission does not contain. -/
 def missingMessage : String :=
-  "Unfortunately, we couldn't find this exercise in your submission; please add it back and "
-    ++ "try to solve it.\nContact your instructor if you still see this error and you indeed "
-    ++ "do have this exercise.\n(Did you rename it by any chance?)"
+  "Unfortunately, we couldn't find this exercise in your submission.\nPlease add it back and "
+    ++ "try to solve it, or contact the instructor if you're still seeing this error and you "
+    ++ "indeed do have this exercise.\n(Did you rename it by any chance? That might cause "
+    ++ "issues!)\nThank you for your cooperation!"
 
 /-- Student-facing: a proof whose source the checker could not find, checked against
 `list` (the list of allowed tactics, theorems or earlier problems). -/
 def couldNotCheckMessage (list : String) : String :=
-  s!"Unfortunately, we have trouble checking your submission to this exercise against the {list}, "
-    ++ "so no credit was awarded.\nTry proving this exercise directly as an ordinary theorem "
-    ++ "instead of generating it, or contact your instructor if you still face issues or you "
-    ++ "believe your proof looks good."
+  "We're very sorry to say this, but we had trouble grading this solution since we couldn't "
+    ++ s!"check it against the {list}.\nTry proving this again normally.\nYou can reach out to "
+    ++ "the instructor if you still run into this issue and your proof looks good.\nWe "
+    ++ "appreciate your understanding and cooperation!"
 
 /-- Student-facing: a proof relying on `d`, which the grader could not trace back to the file. -/
 def untraceableMessage (d : Name) (list : String) : String :=
-  s!"It appears that your proof cites `{d}` and we have trouble tracing to it in your file.\n"
-    ++ s!"This means we cannot check it against the {list}.\nIf you want to use helper lemmas, "
-    ++ "please define them as ordinary theorems instead of using namespaces or other means."
+  s!"We're very sorry to say this, but we had trouble grading this solution since you seemed "
+    ++ s!"to use `{d}` and we couldn't trace it back here.\nThis means we couldn't check it "
+    ++ s!"against the {list}.\nTry proving this again normally.\nIf you want to use helper "
+    ++ "lemmas, define one like the problem set defines its theorems, like "
+    ++ "`theorem _____: _____ := by`.\nYou can reach out to the instructor if you still run "
+    ++ "into this issue and your proof looks good.\nThank you for your understanding and "
+    ++ "cooperation!"
 
 /-- Student-facing explanation of a theorem violation. -/
 def theoremViolationMessage (bad : Array Name) (allowed : Array String) : String :=
   let list (a : Array String) := String.intercalate ", " (a.toList.map (s!"`{·}`"))
-  "We're sorry, but it appears you used some theorems that are not allowed for this exercise.\n"
-    ++ s!"You used {list (bad.map toString)} in your solution and/or in your helper lemmas "
-    ++ "(if any), which " ++ (if bad.size == 1 then "isn't" else "aren't")
-    ++ s!" permitted here.\nPlease stick to only these allowed theorems for this exercise: "
-    ++ s!"{list allowed}."
+  s!"We're sorry, but it seems that you used ({list (bad.map toString)}), which "
+    ++ (if bad.size == 1 then "is a theorem" else "are theorems")
+    ++ " we don't allow for this exercise.\nThis is because some theorems can shortcut to the "
+    ++ "solution which isn't what we were looking for.\nTo help you practice using the "
+    ++ "theorems we taught you in class and/or have given you, please stick to only using "
+    ++ s!"these theorems we allow: {list allowed}.\nThank you for your cooperation!"
 
 /-- `some message` when `@[allowedTheorems]` on `exercise` rules out its proof: the proof
 cites a theorem off the list, or cannot be fully seen, in which case it fails closed as the
@@ -1044,14 +1082,16 @@ def theoremVerdict (sheet submission : Environment) (declCmds : Std.HashMap Name
   | some allowed =>
     match declCmds[exercise]?, helperDeps sheet submission declCmds exercise with
     | none, _ =>
-      some (couldNotCheckMessage "list of allowed theorems")
+      some (couldNotCheckMessage "theorems we allow")
     | _, .error d =>
-      some (untraceableMessage d "list of allowed theorems")
+      some (untraceableMessage d "theorems we allow")
     | some cmd, .ok helpers =>
       if containsMissing cmd || helpers.any (containsMissing ·.2) then
-        some ("Unfortunately, we cannot award credit to this exercise since your proof uses "
-          ++ "syntax that isn't available for this assignment.\nPlease avoid defining your "
-          ++ "own notation or tactics.")
+        some ("We're sorry, but you seemed to use syntax that isn't available for this problem set, "
+          ++ "and thus we couldn't give you credit.\nTo avoid this problem happening in the "
+          ++ "future and get full credit, please stick to the notation and theorems you learned and "
+          ++ "use them the way we did in class.\nThank you for your understanding and "
+          ++ "cooperation!")
       else
         let bad := (proofDeps sheet submission declCmds exercise).cited.filter fun c =>
           !allowed.any (·.toName.isSuffixOf c)
@@ -1060,13 +1100,13 @@ def theoremVerdict (sheet submission : Environment) (declCmds : Std.HashMap Name
 /-- Student-facing explanation of an `allowedLemmas` violation. -/
 def lemmaViolationMessage (bad : Array Name) (allowed : Array String) : String :=
   let list (a : Array String) := String.intercalate ", " (a.toList.map (s!"`{·}`"))
-  "We're sorry, but this exercise restricts what earlier problems you may use in your "
-    ++ s!"solution.\nYou used {list (bad.map toString)} in your solution and/or in your helper "
-    ++ "lemmas (if any), which " ++ (if bad.size == 1 then "isn't" else "aren't")
-    ++ " permitted here.\n"
+  s!"We're sorry, but we don't allow citing {list (bad.map toString)} in this exercise.\n"
     ++ (if allowed.isEmpty
-        then "This exercise unfortunately does not let you use previous problems or lemmas."
-        else s!"You may only use {list allowed} in your solution.")
+        then "To help you get practice proving this problem from scratch, please avoid "
+          ++ "citing previous problems in your solution."
+        else "To help you get practice proving this problem on your own, please stick to "
+          ++ s!"only citing {list allowed} in your solution.")
+    ++ "\nThank you for your cooperation!"
 
 /-- `some message` when `@[allowedLemmas]` on `exercise` rules out its proof: the proof uses
 a problem-set theorem off the list, directly or through a lemma of the student's own. A use
@@ -1078,9 +1118,9 @@ def lemmaVerdict (sheet submission : Environment) (declCmds : Std.HashMap Name S
   | some allowed =>
     match declCmds[exercise]?, helperDeps sheet submission declCmds exercise with
     | none, _ =>
-      some (couldNotCheckMessage "list of allowed earlier problems")
+      some (couldNotCheckMessage "past problems we allow")
     | _, .error d =>
-      some (untraceableMessage d "list of allowed earlier problems")
+      some (untraceableMessage d "past problems we allow")
     | some _, .ok _ =>
       let bad := (proofDeps sheet submission declCmds exercise).sheet.filter fun c =>
         !allowed.any (·.toName == c)
@@ -1089,10 +1129,11 @@ def lemmaVerdict (sheet submission : Environment) (declCmds : Std.HashMap Name S
 /-- Student-facing explanation of a proof missing a method the exercise requires. -/
 def requiredMissingMessage (missing : Array String) : String :=
   let list := String.intercalate ", " (missing.toList.map (s!"`{·}`"))
-  "We're sorry, but this exercise asks you to use a particular method.\n"
-    ++ s!"It appears your proof doesn't use {list}, which this exercise requires.\n"
-    ++ s!"Please include {list} in your proof; you may use the other allowed tactics and "
-    ++ "theorems alongside " ++ (if missing.size == 1 then "it." else "them.")
+  let one := missing.size == 1
+  s!"We're sorry, but we actually want you to practice using {list}, and your submission "
+    ++ "appears to not have " ++ (if one then "it" else "them") ++ ".\nPlease add "
+    ++ (if one then "this" else "these") ++ " in your proof.\nYou can use other tactics and "
+    ++ "theorems we allow as you wish in this exercise.\nThank you for your cooperation!"
 
 /-- `some message` when `@[requiredTactics]` or `@[requiredTheorems]` on `exercise` names a
 tactic the proof does not use or a theorem it does not cite. Lemmas of the student's own
@@ -1104,8 +1145,8 @@ def requiredVerdict (sheet submission : Environment) (declCmds : Std.HashMap Nam
   let theorems := (requiredTheoremsAttr.getParam? sheet exercise).getD #[]
   if tactics.isEmpty && theorems.isEmpty then none else
   match declCmds[exercise]?, helperDeps sheet submission declCmds exercise with
-  | none, _ => some (couldNotCheckMessage "list of required tactics and theorems")
-  | _, .error d => some (untraceableMessage d "list of required tactics and theorems")
+  | none, _ => some (couldNotCheckMessage "tactics and theorems we want you to use")
+  | _, .error d => some (untraceableMessage d "tactics and theorems we want you to use")
   | some cmd, .ok helpers =>
     let used := (#[cmd] ++ helpers.map (·.2)).foldl
       (fun acc c => acc ++ tacticNamesIn kinds c) #[]
@@ -1252,9 +1293,11 @@ def cleanSubmission (submission : Environment) (contents : String) (cmds : Array
 early in a proof tends to set off more. -/
 def brokenMessage (errors : Array String) : String :=
   let shown := errors.toList.take 3
-  "This exercise has some error(s) in it, so it was not graded:\n\n"
-    ++ String.intercalate "\n\n" shown
-    ++ (if errors.size > 3 then s!"\n\n({errors.size - 3} more)" else "")
+  "We're sorry, but we saw some compilation errors here that prevented us from grading this "
+    ++ "exercise:\n\n" ++ String.intercalate "\n\n" shown
+    ++ (if errors.size > 3 then s!"\n\n(and {errors.size - 3} more)" else "")
+    ++ "\n\nYou should try to fix these prior to your final submission to get full credit.\n"
+    ++ "We would greatly appreciate the effort!"
 
 /-- Whether `name`'s proof, or any declaration of the submission's own it relies on,
 contains `sorry`. Lean also fills in `sorry` where it recovered from an error, so this
@@ -1276,21 +1319,31 @@ def usesSorry (submission : Environment) (name : Name) : Bool := Id.run do
 /-- A problem marked `@[gradedByHand]`, as the student wrote it, with a line of facts
 above it for the grader. -/
 def handGradedText (submission : Environment) (contents : String)
-    (declCmds : Std.HashMap Name Syntax) (kinds : PersistentHashMap SyntaxNodeKind Unit)
-    (name : Name) : String :=
+    (declCmds : Std.HashMap Name Syntax) (hasErrors : Bool) (name : Name) : String :=
   match declCmds[name]? with
-  | none => s!"The autograder cannot find `{name}` in this submission."
+  | none =>
+    s!"We're sorry, but we're having trouble finding `{name}` in your submission.\nPlease add "
+      ++ "it back and try to solve it to get credit.\n(Did you happen to rename it by any "
+      ++ "chance? That might cause this issue!)\nThank you for your cooperation!"
   | some cmd =>
-    let status := match submission.find? name with
-      | none => "did not compile"
-      | some _ => if usesSorry submission name then "contains sorry or an error"
-                  else "compiles, no sorry"
-    let tactics := tacticNamesIn kinds cmd
-    let tactics := if tactics.isEmpty then "none" else String.intercalate ", " tactics.toList
     let text := match cmd.getPos?, cmd.getTailPos? with
       | some b, some e => String.Pos.Raw.extract contents b e
       | _, _ => "(source unavailable)"
-    s!"{status}; tactics: {tactics}\n\n{text}"
+    -- An error shows up as a `sorry` Lean filled in, so errors are checked first: a student
+    -- with a compile error must not be told to look for a `sorry` they never wrote.
+    let (status, next) :=
+      if hasErrors || (submission.find? name).isNone then
+        ("has some error(s).", "Try going back to your Lean editor or live.lean-lang.org and "
+          ++ "resolve them if you can.\nYou can also ask the instructor for help.")
+      else if usesSorry submission name then
+        ("appears to be unfinished as it says `sorry`.", "Please try finishing it, or if you "
+          ++ "did, no need to be `sorry` about it (you can remove the `sorry`).")
+      else
+        ("compiled and looks finished (no `sorry` found).",
+          "Please be patient while we work through grading.")
+    "This is a problem that we're grading manually.\nFrom what we saw so far, your solution to "
+      ++ s!"this exercise {status}\nFor your convenience, here's what you wrote:\n\n{text}\n\n"
+      ++ s!"{next}\nWe appreciate your cooperation!"
 
 /-- A results entry worth no points, for reading rather than scoring: a hand-graded
 problem as the student wrote it.
@@ -1391,7 +1444,7 @@ def verifyWithGivens (name : Name) (pts : Float) (sheet : Environment) (givens :
     permitted_axioms := ((permittedAxiomsFor sheet name).map Name.toString).push ax }
   let givenList := String.intercalate ", " (givens.toList.map toString)
   if ok then
-    return { name, score := pts, status := "passed", output := "Your solution is correct!",
+    return { name, score := pts, status := "passed", output := "Your solution is correct!\nGood job! :)",
              sheet_name := name, expected_status := "none",
              output_log := s!"Verified by Comparator, taking as given: {givenList}\n{log}" }
   else
@@ -1438,19 +1491,23 @@ def gradeSubmission (sheet submission : Environment)
         && (requiredTacticsAttr.getParam? sheet name).isNone
         && (requiredTheoremsAttr.getParam? sheet name).isNone then none
     else extension?.map fun cmd =>
-      s!"We're sorry, but it appears that you used `{cmd}` to define new notation or change "
-        ++ "a tactic's behavior.\nThis makes it hard for us to determine which tactics or "
-        ++ "theorems your proof really used, so we cannot award points here.\nPlease do not use "
-        ++ s!"commands like `{cmd}` and prove using only the theorems and tactics you're allowed."
+      s!"We're sorry, but what's going on here?\nIt seems that you're using `{cmd}` to change "
+        ++ "the behavior of some tactics, define new notation, or do something else.\nThis "
+        ++ "makes it hard for us to determine what your proof really used, so we couldn't award "
+        ++ "points here.\nTo make things smoother and easier for us and you, please avoid using "
+        ++ s!"commands like `{cmd}` next time, and just solve this problem normally.\nThank you "
+        ++ "for your cooperation!"
   -- See `cleanSubmission`: errors in one problem no longer sink the others.
   let cleaned := cleanSubmission submission submissionContents submissionCmds errors
   writeComparatorSolution cleaned.contents
   -- Why a problem cannot be graded because of an error, if it cannot.
   let brokenVerdict (name : Name) : Option String :=
     let reliesOn (h : Name) :=
-      s!"We're sorry, but we cannot grade your proof because it cites `{h}`, a lemma in your "
-        ++ "file with some error(s).\nPlease resolve the error(s) in the lemma, prove the "
-        ++ "exercise without it, or contact your instructor if it was handed to you."
+      s!"We're sorry, but we have trouble grading your proof because it cites `{h}`, a lemma "
+        ++ "in your file with some error(s).\nTo get full credit, please try resolving the "
+        ++ "error(s) in the lemma.\nYou can also take a shot at proving this exercise without "
+        ++ "it, or contact the instructor if it was handed to you.\nWe would greatly appreciate "
+        ++ "the effort!"
     match cleaned.broken[name]?, cleaned.usesBroken[name]? with
     | some es, _ => some (brokenMessage es)
     | none, some h => some (reliesOn h)
@@ -1482,17 +1539,19 @@ def gradeSubmission (sheet submission : Environment)
               | none =>
                 -- Elaboration found the declaration but our parse did not, so we have
                 -- nothing to inspect.
-                some (couldNotCheckMessage "list of allowed tactics")
+                some (couldNotCheckMessage "tactics we allow")
               | some cmd =>
                 if containsMissing cmd then
-                  some ("Unfortunately, we cannot award credit to this exercise since your "
-                    ++ "proof uses syntax that isn't available for this assignment.\nPlease "
-                    ++ "avoid defining your own tactics or importing libraries beyond the "
-                    ++ "assignment's.")
+                  some ("We're sorry, but you seemed to use syntax that isn't available for this problem set, "
+                    ++ "and thus we couldn't give you credit.\nTo avoid this problem happening in the "
+                    ++ "future and get full credit, please stick to the tactics you learned and use them "
+                    ++ "the way we did in class.\nThank you for your understanding and "
+                    ++ "cooperation!")
                 else if !containsByBlock cmd then
-                  some ("Unfortunately, this exercise only accepts tactic proofs (e.g. "
-                    ++ "`:= by ...`) with a limited set of tactics.\nWriting the proof term "
-                    ++ "directly is not accepted here.")
+                  some ("Unfortunately, we don't accept solutions like this.\nPlease only use "
+                    ++ "tactic proofs (e.g. `:= by ...`) with the tactics we allow.\nIt's the "
+                    ++ "typical way we prove theorems in this class.\nThank you for your "
+                    ++ "cooperation!")
                 else
                   let bad := disallowedTactics kinds allowed cmd
                   if leftUnfinished bad then some unfinishedMessage
@@ -1502,14 +1561,14 @@ def gradeSubmission (sheet submission : Environment)
                     -- it leans on. See `helperDeps`.
                     match helperDeps sheet submission declCmds name with
                     | .error d =>
-                      some (untraceableMessage d "list of allowed tactics")
+                      some (untraceableMessage d "tactics we allow")
                     | .ok helpers =>
                       helpers.findSome? fun (h, hcmd) =>
                         if containsMissing hcmd then
-                          some (s!"Unfortunately, we cannot award credit to this exercise "
-                            ++ s!"since your proof cites a lemma `{h}` that uses syntax which "
-                            ++ "isn't available for this assignment.\nPlease avoid defining "
-                            ++ "your own tactics.")
+                          some ("We're sorry, but you seemed to use syntax that isn't available for this problem set, "
+                            ++ "and thus we couldn't give you credit.\nTo avoid this problem happening in the "
+                            ++ "future and get full credit, please avoid defining your own tactics.\n"
+                            ++ "Thank you for your understanding and cooperation!")
                         else
                           let hbad := disallowedTactics kinds allowed hcmd
                           if hbad.isEmpty then none
@@ -1582,9 +1641,10 @@ def gradeSubmission (sheet submission : Environment)
   -- Gradescope will not accept an empty tests list, and this most likely
   -- indicates a misconfiguration anyway
   if results.size == 0 then
-    exitWithError <| "We're sorry, but it appears that no exercises are marked as gradeable "
-        ++ "by this autograder.\nPlease contact your instructor about this issue and provide "
-        ++ "them with a link to this submission."
+    exitWithError <| "We're sorry, but it seems that no exercises are marked as gradeable.\n"
+        ++ "Please contact the instructor about this issue and provide them with a link to this "
+        ++ "submission to help with troubleshooting.\nWe appreciate your patience while we get "
+        ++ "this sorted out!"
   -- Report exercises in the order the stencil states them. Grading order follows the
   -- environment's internal hash order, which puts, say, problem_3b before problem_2b.
   let order : Std.HashMap Name Nat :=
@@ -1597,7 +1657,8 @@ def gradeSubmission (sheet submission : Environment)
   let mut info : Array Json := #[]
   for name in byRank id handGraded do
     info := info.push <| infoEntry s!"{name} (graded by hand)"
-      (handGradedText submission submissionContents declCmds kinds name)
+      (handGradedText submission submissionContents declCmds
+        (cleaned.broken.contains name || cleaned.usesBroken.contains name) name)
   -- Which build graded this: the commit line of the stamp make_autograder.sh writes.
   let stamp ← try IO.FS.readFile "build_stamp.txt" catch _ => pure ""
   let commit := (stamp.splitOn "\n").filter (·.startsWith "commit:")
@@ -1657,9 +1718,10 @@ def testGradeSubmission (sheet submission : Environment)
   -- Gradescope will not accept an empty tests list, and this most likely
   -- indicates a misconfiguration anyway
   if results.size == 0 then
-    exitWithError <| "We're sorry, but it appears that no exercises are marked as gradeable "
-        ++ "by this autograder.\nPlease contact your instructor about this issue and provide "
-        ++ "them with a link to this submission."
+    exitWithError <| "We're sorry, but it seems that no exercises are marked as gradeable.\n"
+        ++ "Please contact the instructor about this issue and provide them with a link to this "
+        ++ "submission to help with troubleshooting.\nWe appreciate your patience while we get "
+        ++ "this sorted out!"
 
   return results
 
@@ -1673,16 +1735,16 @@ def moveFilesIntoPlace (localSubmission : Option String) : IO (String × String)
     let leanFiles := submittedFiles.filter
       (λ f => f.path.extension == some "lean")
     let some leanFile := leanFiles[0]?
-      | exitWithError <| "Unfortunately, we could not grade your submission because it did "
-          ++ "not contain a Lean file.\nMake sure to upload a single .lean file containing your "
-          ++ "solution(s)."
+      | exitWithError <| "Unfortunately, we couldn't grade your submission because it didn't "
+          ++ "contain a Lean file.\nMake sure to upload a single .lean file containing your "
+          ++ "solution(s) to get credit.\nWe'd be grateful for that!"
     IO.FS.writeFile submissionFileName (← IO.FS.readFile leanFile.path)
     let output :=
       if leanFiles.size > 1
-      then "Warning: You submitted multiple Lean files.\nThe autograder expects you to submit "
-        ++ "exactly one Lean file containing your solutions.\nInstead, it has picked "
-        ++ s!"{leanFile.fileName} to grade, which may not be the file you intended for us to "
-        ++ "grade.\nResubmit with only the Lean file you want graded to resolve this issue.\n\n"
+      then "You submitted multiple Lean files, but the autograder only wants one Lean file "
+        ++ s!"with your solutions.\nWe happened to grade {leanFile.fileName}, which may not be "
+        ++ "what you wanted.\nTo avoid this issue in the future, please resubmit only the file "
+        ++ "you want us to grade.\nThank you for your cooperation!\n\n"
       else ""
     pure (leanFile.fileName, output)
   | some path =>
@@ -1695,9 +1757,10 @@ def moveTemplateIntoPlace (localTemplate : Option String) : IO Unit := do
     | none =>
       let configRaw ← IO.FS.readFile "config.json"
       let studentErrorText :=
-        "We're sorry, but it appears that this autograder was not configured correctly.\n"
-          ++ "Please contact your instructor about this issue and provide them with a link to "
-          ++ "this submission."
+        "We're sorry, but it seems that this autograder wasn't configured correctly.\n"
+          ++ "Please contact the instructor about this issue and provide them with a link to "
+          ++ "this submission to help with troubleshooting.\nWe appreciate your patience while "
+          ++ "we get this sorted out!"
       let config ←
         try
           IO.ofExcept <| Json.parse configRaw
@@ -1738,14 +1801,14 @@ def sameImports (a b : HeaderSyntax) : Bool :=
 
 /-- What a student who changed the import lines is told to put back. -/
 def restoreImportsMessage (sheetHeader : HeaderSyntax) : String :=
-  "Change them back to exactly:\n\n"
+  "Please change them back to exactly:\n\n"
     ++ String.intercalate "\n" ((importedModules sheetHeader).toList.map (s!"import {·}"))
-    ++ "\n\nand resubmit."
+    ++ "\n\nand resubmit to get credit for this submission.\nWe'd appreciate it!"
 
 /-- A submission refused for its import lines: one that cannot load, or that imports more. -/
-def importsRefusedMessage (sheetHeader : HeaderSyntax) : String :=
-  "We're sorry, but we cannot grade this submission because it appears that the import "
-    ++ "lines were changed.\n" ++ restoreImportsMessage sheetHeader
+def importsRefusedMessage (sheetHeader : HeaderSyntax) (effect : String) : String :=
+  "We're sorry, but we can't grade this submission because it seems that the imports have "
+    ++ s!"changed.\nChanged imports can {effect}\n" ++ restoreImportsMessage sheetHeader
 
 def getErrorsStr (ml : MessageLog) : IO String := do
   let errorMsgs := ml.toList.filter (λ m => m.severity == .error)
@@ -1800,10 +1863,10 @@ unsafe def main (args : List String) : IO Unit := do
 
   if sheetMsgs.hasErrors then
     exitWithError (instructorInfo := (← getErrorsStr sheetMsgs)) <|
-      "We're sorry, but it appears there was an unexpected error processing the assignment's "
-        ++ "imports.\nPlease contact your instructor about this issue.\n(If you are the "
-        ++ "instructor, this usually indicates a version discrepancy where the problem set "
-        ++ "imports a module that the autograder's Lean version lacks, or a typo in the imports.)"
+      "We're sorry, but it appears there was an unexpected error processing the imports for "
+        ++ "this assignment.\nWe advise you to contact the instructor about this problem with a "
+        ++ "link to this submission to help them troubleshoot.\nThank you for your patience "
+        ++ "while we get this sorted out!"
 
   let sheetCmdState : Command.State := Command.mkState sheetHeadEnv sheetMsgs {}
   phase "elaborating problem set"
@@ -1827,7 +1890,8 @@ unsafe def main (args : List String) : IO Unit := do
 
   if messages.hasErrors && !sameImports header sheetHeader then
     exitWithError (instructorInfo := (← getErrorsStr messages)) <|
-      importsRefusedMessage sheetHeader
+      importsRefusedMessage sheetHeader ("break functionality here because some tactics or "
+        ++ "theorems need certain packages that we don't bring in (for the sake of memory).")
   -- `sameImports` above is consulted only when the header failed to load, so a submission
   -- that compiles while importing something extra was accepted in silence. An extra import
   -- can strengthen a tactic the exercise permits -- a `norm_num` or `simp` extension, say --
@@ -1839,12 +1903,14 @@ unsafe def main (args : List String) : IO Unit := do
   unless extraImports.isEmpty do
     exitWithError <|
       importsRefusedMessage sheetHeader
+        "make certain tactics or theorems do things we don't expect them to do."
   if messages.hasErrors then
     exitWithError <|
-      "We're sorry, but we couldn't grade your Lean submission because its header contains "
-      ++ "errors.\nThis is likely because you are attempting to import a module that doesn't "
-      ++ "exist.\nA log of these errors is provided below:\n\n"
-      ++ (← getErrorsStr messages) ++ "\n\nPlease correct them and resubmit."
+      "We're sorry, but we couldn't grade your Lean submission because there are errors in "
+      ++ "its header.\nThis is likely because you are attempting to import a module that "
+      ++ "doesn't exist.\nHere are some errors that we saw:\n\n"
+      ++ (← getErrorsStr messages) ++ "\n\nPlease try fixing them and resubmit to get credit "
+      ++ "for this submission.\nWe'd appreciate it!"
 
   phase "elaborating submission"
   let cmdState : Command.State := Command.mkState headerEnv messages {}
@@ -1855,13 +1921,14 @@ unsafe def main (args : List String) : IO Unit := do
   let err ← getErrorsStr messages
   let output := output ++
     (if messages.hasErrors && !sameImports header sheetHeader
-     then "It appears that your import lines were changed from the assignment's.\n"
+     then "It seems that the imports have changed.\n"
             ++ restoreImportsMessage sheetHeader ++ "\n\n" else "") ++
     if messages.hasErrors
-    then "Warning: It appears that your submission may have errors (listed below).\n"
-          ++ "You should try to correct these prior to your final submission.\n"
-          ++ "Any responses with errors will be treated by this autograder as containing "
-          ++ "\"sorry.\"\n"
+    then "Unfortunately, your submission seems to have errors (listed below).\n"
+          ++ "Responses with these errors will be treated by this autograder as containing "
+          ++ "\"sorry\" so your other solutions can get credit (instead of failing "
+          ++ "everything).\nTry to fix them to get full credit.\nWe would greatly appreciate the "
+          ++ "effort!\n"
           ++ err
     else ""
 
