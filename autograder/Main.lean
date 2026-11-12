@@ -796,10 +796,17 @@ def matchesStencil (sheet submission : Environment) (r : Name) : Bool :=
 level. Elaboration names auxiliary constants after the declaration that produced them
 (`helper._proof_1`, `helper.match_1`), so this maps each one back to the source it came
 from. -/
-def declRoot? (declCmds : Std.HashMap Name Syntax) : Name → Option Name
+def declRootOf? (declCmds : Std.HashMap Name Syntax) : Name → Option Name
   | .anonymous => none
-  | n@(.str p _) => if declCmds.contains n then some n else declRoot? declCmds p
-  | n@(.num p _) => if declCmds.contains n then some n else declRoot? declCmds p
+  | n@(.str p _) => if declCmds.contains n then some n else declRootOf? declCmds p
+  | n@(.num p _) => if declCmds.contains n then some n else declRootOf? declCmds p
+
+/-- `declRootOf?`, seeing through `private`: Lean renames `private theorem helper` to an
+internal `_private....helper`, which the source does not say, so the name the student wrote
+is looked up instead. Lean refuses a public and a private declaration of the same name,
+so this cannot point at the wrong one. -/
+def declRoot? (declCmds : Std.HashMap Name Syntax) (n : Name) : Option Name :=
+  declRootOf? declCmds ((privateToUserName? n).getD n)
 
 /-- Whether some proper prefix of `n` names an imported declaration. -/
 def hasImportedPrefix (env : Environment) : Name → Bool
