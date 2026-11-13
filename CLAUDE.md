@@ -26,8 +26,9 @@ run_suite.sh        grades files against a problem set and compares with their e
 Pinned to Lean and Mathlib **v4.35.0**, with Comparator at its v4.35.0 tag. Upgrades are
 tested in CI, not locally: `.github/workflows/try-lean.yml` bumps the four pins
 (`lean-toolchain`, `autograder/lean-toolchain`, the Mathlib `rev` in `lakefile.toml`,
-Comparator's tag in `autograder/lakefile.lean`), runs `lake update`, compiles
-`ci/tactic_probe.lean` and grades the examples, then uploads the bump as `upgrade.patch`.
+Comparator's tag in `autograder/lakefile.lean`), runs `lake update` in `autograder/` and
+then the root, compiles `ci/tactic_probe.lean` and grades the examples, then uploads the
+bump as `upgrade.patch`.
 
 ## How grading runs
 

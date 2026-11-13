@@ -66,8 +66,9 @@ jobs:
       - name: Update the dependencies
         if: steps.pick.outputs.skip != 'true'
         run: |
-          lake update
+          # The autograder first: the root takes Comparator's pin from its manifest.
           (cd autograder && lake update)
+          lake update
 
       - name: Fetch prebuilt Mathlib for the modules the problem sets import
         if: steps.pick.outputs.skip != 'true'
